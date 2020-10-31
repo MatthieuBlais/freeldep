@@ -1,0 +1,40 @@
+- aws:
+    region: ap-southeast-1
+    account-id: 908177370303
+  location: ./compiler/templates/aws-artifact-bucket.yaml
+  template:
+    name: smlf-dataengineering-cfn-artifact-bucket
+    artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
+    parameters: {}
+  lambdas: []
+
+- aws:
+    region: ap-southeast-1
+    account-id: 908177370303
+  location: ./compiler/templates/aws-cfn-deployer.yaml
+  template:
+    name: smlf-dataengineering-cfn-deployer
+    parameters: {}
+    state-machine-name: 'smlf-dataengineering-cfn-deployer'
+    stack-prefix: 'smlf-dataengineering-cfn'
+    artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
+    lambda-code-key: 'packages/smlf-dataengineering-cfn-deployer/lambdas/'
+    subscribers:
+      - matthieu.blais1@gmail.com
+  lambdas:
+    - name: package
+      location: ./compiler/package/
+      template-attribute: lambda-code-key
+      bucket: smlf-dataengineering-deployer-artifact-bucket
+
+- aws:
+    region: ap-southeast-1
+    account-id: 908177370303
+  location: ./compiler/templates/aws-ci.yaml
+  template:
+    name: smlf-dataengineering-cfn-deployer-ci
+    parameters:
+      template-deployer-repository-name: smlf-dataengineering-template-deployer
+      deployer-codebuild-name: smlf-dataengineering-template-deployer-build
+      deployer-artifact-bucket: smlf-dataengineering-deployer-artifact-bucket
+  lambdas: []

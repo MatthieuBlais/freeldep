@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A step function to deploy CFN templates
+Resources:
+
+  DeploymentFailureTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: smlf-dataengineering-cfn-deployer-notification
+      TopicName: smlf-dataengineering-cfn-deployer-notification
+      
+      Subscription:
+      
+        - Endpoint: matthieu.blais1@gmail.com
+          Protocol: email
+      
+      
+
+  DeployTemplates:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: smlf-dataengineering-deployer-artifact-bucket
+        S3Key: packages/smlf-dataengineering-cfn-deployer/lambdas/package_20201031_1053_4cb68b541b2411ebb8a0acde48001122.zip
+      Description: "Deploy CFN template"
+      FunctionName: smlf-dataengineering-cfn-deployer-deploy-template
+      Handler: "deployer.deploy_template"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      
+
+  StatusTemplates:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: smlf-dataengineering-deployer-artifact-bucket
+        S3Key: packages/smlf-dataengineering-cfn-deployer/lambdas/package_20201031_1053_4cb68b541b2411ebb8a0acde48001122.zip
+      Description: "Get status of CFN template"
+      FunctionName: smlf-dataengineering-cfn-deployer-get-status
+      Handler: "deployer.status_template"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      
+
+  TemplateDeployer:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: smlf-dataengineering-cfn-deployer
+      DefinitionString: |-
+        {
+          "StartAt": "Deploy template",
+          "States": {
+            "Deploy template": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:ap-southeast-1:908177370303:function:smlf-dataengineering-cfn-deployer-deploy-template",
+              "Next": "Wait 10s"
+            },
+            "Wait 10s": {
+              "Type": "Wait",
+              "Seconds": 10,
+              "Next": "Status"
+            },
+            "Status": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:ap-southeast-1:908177370303:function:smlf-dataengineering-cfn-deployer-get-status",
+              "Next": "Is deployed?"
+            },
+            "Is deployed?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Status",
+                  "StringEquals": "SUCCESS",
+                  "Next": "Success"
+                },
+                {
+                  "Variable": "$.Status",
+                  "StringEquals": "FAIL",
+                  "Next": "Notify Admins"
+                }
+              ],
+              "Default": "Wait 10s"
+            },
+            "Notify Admins": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "arn:aws:sns:ap-southeast-1:908177370303:smlf-dataengineering-cfn-deployer-notification",
+                "Message.$": "$.ErrorMessage"
+              },
+              "Next": "Fail"
+            },
+            "Success": {
+              "Type": "Succeed"
+            },
+            "Fail": {
+              "Type": "Fail",
+              "Cause": "$.ErrorMessage"
+            }
+          }
+        }
+      RoleArn: !GetAtt [StateMachineRole, Arn]
+
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: StateMachinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:smlf-dataengineering-cfn-deployer-*"
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - arn:aws:sns:*:*:smlf-dataengineering-cfn-deployer-notification
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:Describe*
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:PutMetricFilter
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:PutMetricAlarm
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                Resource:
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule"
+
+  LambdaDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: StateMachinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketAcl
+                Resource:
+                  - arn:aws:s3:::smlf-dataengineering-deployer-artifact-bucket
+              - Effect: Allow
+                Action:
+                  - s3:HeadObject
+                  - s3:GetObjectTagging
+                  - s3:GetObject
+                  - s3:GetObjectAcl
+                  - s3:GetObjectTagging
+                Resource:
+                  - arn:aws:s3:::smlf-dataengineering-deployer-artifact-bucket/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DeleteStack'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:CreateChangeSet'
+                  - 'cloudformation:DeleteChangeSet'
+                  - 'cloudformation:DescribeChangeSet'
+                  - 'cloudformation:ExecuteChangeSet'
+                  - 'cloudformation:SetStackPolicy'
+                  - 'cloudformation:ValidateTemplate'
+                  - 'iam:PassRole'
+                Resource: '*'

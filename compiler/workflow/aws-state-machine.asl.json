@@ -1,0 +1,52 @@
+{
+  "StartAt": "Deploy template",
+  "States": {
+    "Deploy template": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-deploy-template",
+      "Next": "Wait 10s"
+    },
+    "Wait 10s": {
+      "Type": "Wait",
+      "Seconds": 10,
+      "Next": "Status"
+    },
+    "Status": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-get-status",
+      "Next": "Is deployed?"
+    },
+    "Is deployed?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Status",
+          "StringEquals": "SUCCESS",
+          "Next": "Success"
+        },
+        {
+          "Variable": "$.Status",
+          "StringEquals": "FAIL",
+          "Next": "Notify Admins"
+        }
+      ],
+      "Default": "Wait 10s"
+    },
+    "Notify Admins": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:{{ AwsRegion }}:{{ AwsAccountId }}:{{ StackPrefix }}-deployer-notification",
+        "Message.$": "$.ErrorMessage"
+      },
+      "Next": "Fail"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "Fail": {
+      "Type": "Fail",
+      "Cause": "$.ErrorMessage"
+    }
+  }
+}
