@@ -90,9 +90,15 @@ Resources:
         BuildSpec: |
           version: 0.2
           phases:
+            install:
+              runtime-versions:
+                python: 3.8
+              commands:
+                - pip3 install boto3 Jinja2
             build:
               commands:
                 - aws s3 cp . s3://$ARTIFACTS_BUCKET/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
+                - /bin/bash deploy.sh
 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
