@@ -30,6 +30,10 @@ Resources:
       Role: !GetAtt [LambdaServiceRoleArn, Arn]
       Runtime: python3.8
       Timeout: 15
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref DeployerCodebuildServiceName
+
 
   DeployerCodeBuild:
     Type: "AWS::CodeBuild::Project"
@@ -60,12 +64,10 @@ Resources:
                 python: 3.8
               commands:
                 - pip3 install boto3 Jinja2
-            pre_build:
-              commands:
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/service/main.py .
             build:
               commands:
-                - [ -f ./bin/package.sh ] || /bin/bash ./bin/package.sh
+                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/main.py .
+                - "[ -f ./bin/package.sh ] || /bin/bash ./bin/package.sh"
                 - python3 main.py
                 
   CodebuildServiceRoleArn:
