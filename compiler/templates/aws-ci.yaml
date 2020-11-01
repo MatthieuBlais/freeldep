@@ -38,6 +38,8 @@ Resources:
           - branch
           referenceName:
           - master
+          - staging
+          - dev
       Targets:
       - Arn: !GetAtt [DeployerCodeBuild, Arn]
         RoleArn: !GetAtt [CloudWatchEventTriggerRole, Arn]
@@ -89,8 +91,8 @@ Resources:
           version: 0.2
           phases:
             build:
-            commands:
-              - aws s3 cp . s3://$ARTIFACTS_BUCKET/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
+              commands:
+                - aws s3 cp . s3://$ARTIFACTS_BUCKET/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
@@ -116,7 +118,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${TemplateDeployerRepositoryName}'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DeployerCodebuildName}:*'
               - Effect: Allow
                 Action:
                   - 'codecommit:GitPull'

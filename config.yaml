@@ -38,3 +38,21 @@
       deployer-codebuild-name: smlf-dataengineering-template-deployer-build
       deployer-artifact-bucket: smlf-dataengineering-deployer-artifact-bucket
   lambdas: []
+
+- aws:
+    region: ap-southeast-1
+    account-id: 908177370303
+  location: ./compiler/templates/aws-deployer-service.yaml
+  template:
+    name: smlf-dataengineering-cfn-deployer-service
+    parameters:
+      deployer-codebuild-service-name: smlf-dataengineering-template-deployer-service
+      deployer-artifact-bucket: smlf-dataengineering-deployer-artifact-bucket
+      deployer-state-arn: arn:aws:states:ap-southeast-1:908177370303:stateMachine:smlf-dataengineering-cfn-deployer
+      deployer-trigger-lambda-name: smlf-dataengineering-deployer-trigger-service
+    lambda-code-key: 'packages/smlf-dataengineering-cfn-deployer/lambdas/'
+  lambdas:
+    - name: service
+      location: ./compiler/service/
+      template-attribute: lambda-code-key
+      bucket: smlf-dataengineering-deployer-artifact-bucket
