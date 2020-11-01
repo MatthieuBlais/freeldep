@@ -11,8 +11,8 @@ import time
 import botocore
 import json
 
-CONFIG_FILENAME = "bin/config.yaml"
-COMPILED_TEMPLATE = "bin/compiled-template.yaml"
+CONFIG_FILENAME = "./config.yaml"
+COMPILED_TEMPLATE = "./bin/compiled-template.yaml"
 
 s3 = boto3.client('s3')
 sfn = boto3.client('stepfunctions')
