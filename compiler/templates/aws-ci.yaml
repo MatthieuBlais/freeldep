@@ -131,6 +131,7 @@ Resources:
                   - 'cloudformation:SetStackPolicy'
                   - 'cloudformation:ValidateTemplate'
                   - 'iam:PassRole'
+                  - 'iam:GetRole'
                 Resource: '*'
               - Effect: Allow
                 Action:
