@@ -1,4 +1,4 @@
-
+import botocore
 
 class CloudFormation:
     """Deploys CloudFormation templates to AWS"""
@@ -16,9 +16,9 @@ class CloudFormation:
         try:
             if (action == "UPDATE_STACK" or action == "CREATE_OR_UPDATE_STACK") and self.exists(stack_name):
                 self._update_cfn_stack(stack_name, template_path, parameters)
-            if action == "CREATE_STACK" or action == "CREATE_OR_UPDATE_STACK":
+            elif action == "CREATE_STACK" or action == "CREATE_OR_UPDATE_STACK":
                 self._create_cfn_stack(stack_name, template_path, parameters)
-            if action == "DELETE_STACK":
+            elif action == "DELETE_STACK":
                 self.delete_stack(stack_name)
             return True
         except Exception:
@@ -93,8 +93,10 @@ class CloudFormation:
                     for key in parameters.keys()
                 ],
             )
-        except Exception:
-            raise
+        except botocore.exceptions.ClientError as error:
+            if error.response['Error']['Code'] == 'ValidationError' and error.response['Error']['Message'] == 'No updates are to be performed.':
+                print(error.response['Error']['Message'])
+                return False
 
     def _get_stack_status(self, stack_name):
         """Get a cfn stack status
