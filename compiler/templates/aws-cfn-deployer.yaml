@@ -182,51 +182,53 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: '/'
-      Policies:
-        - PolicyName: StateMachinePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              {% if AwsDeploymentRole is defined %}
-              - Effect: Allow
-                Action:
-                  - sts:AssumeRole
-                Resource:
-                  - {{ AwsDeploymentRole }}
-              {% endif %}
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                  - s3:GetBucketAcl
-                Resource:
-                  - arn:aws:s3:::{{ ArtifactBucket }}
-              - Effect: Allow
-                Action:
-                  - s3:HeadObject
-                  - s3:GetObjectTagging
-                  - s3:GetObject
-                  - s3:GetObjectAcl
-                  - s3:GetObjectTagging
-                Resource:
-                  - arn:aws:s3:::{{ ArtifactBucket }}/*
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - "*"
-              - Effect: Allow
-                Action:
-                  - 'cloudformation:CreateStack'
-                  - 'cloudformation:DeleteStack'
-                  - 'cloudformation:DescribeStacks'
-                  - 'cloudformation:UpdateStack'
-                  - 'cloudformation:CreateChangeSet'
-                  - 'cloudformation:DeleteChangeSet'
-                  - 'cloudformation:DescribeChangeSet'
-                  - 'cloudformation:ExecuteChangeSet'
-                  - 'cloudformation:SetStackPolicy'
-                  - 'cloudformation:ValidateTemplate'
-                  - 'iam:PassRole'
-                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      # Policies:
+      #   - PolicyName: StateMachinePolicy
+      #     PolicyDocument:
+      #       Version: '2012-10-17'
+      #       Statement:
+      #         {% if AwsDeploymentRole is defined %}
+      #         - Effect: Allow
+      #           Action:
+      #             - sts:AssumeRole
+      #           Resource:
+      #             - {{ AwsDeploymentRole }}
+      #         {% endif %}
+      #         - Effect: Allow
+      #           Action:
+      #             - s3:ListBucket
+      #             - s3:GetBucketAcl
+      #           Resource:
+      #             - arn:aws:s3:::{{ ArtifactBucket }}
+      #         - Effect: Allow
+      #           Action:
+      #             - s3:HeadObject
+      #             - s3:GetObjectTagging
+      #             - s3:GetObject
+      #             - s3:GetObjectAcl
+      #             - s3:GetObjectTagging
+      #           Resource:
+      #             - arn:aws:s3:::{{ ArtifactBucket }}/*
+      #         - Effect: Allow
+      #           Action:
+      #             - logs:CreateLogGroup
+      #             - logs:CreateLogStream
+      #             - logs:PutLogEvents
+      #           Resource:
+      #             - "*"
+      #         - Effect: Allow
+      #           Action:
+      #             - 'cloudformation:CreateStack'
+      #             - 'cloudformation:DeleteStack'
+      #             - 'cloudformation:DescribeStacks'
+      #             - 'cloudformation:UpdateStack'
+      #             - 'cloudformation:CreateChangeSet'
+      #             - 'cloudformation:DeleteChangeSet'
+      #             - 'cloudformation:DescribeChangeSet'
+      #             - 'cloudformation:ExecuteChangeSet'
+      #             - 'cloudformation:SetStackPolicy'
+      #             - 'cloudformation:ValidateTemplate'
+      #             - 'iam:PassRole'
+      #           Resource: '*'

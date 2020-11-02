@@ -12,6 +12,9 @@ Parameters:
   DeployerArtifactBucket:
     Type: String
 
+  DeployerStateArn:
+    Type: String
+
 Resources:
 
   TemplateDeployerRepository:
@@ -82,6 +85,9 @@ Resources:
         - Name: ARTIFACTS_BUCKET
           Type: PLAINTEXT
           Value: !Ref DeployerArtifactBucket
+        - Name: DEPLOYER_STATE_MACHINE_ARN
+          Type: PLAINTEXT
+          Value: !Ref DeployerStateArn
       ServiceRole: !Ref CodebuildServiceRoleArn
       Source:
         Location: !Sub "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${TemplateDeployerRepositoryName}"
@@ -98,7 +104,8 @@ Resources:
             build:
               commands:
                 - aws s3 cp . s3://$ARTIFACTS_BUCKET/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
-                - /bin/bash deploy.sh
+                - cd compiler
+                - python3 service/main.py
 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
@@ -118,6 +125,48 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DeployerCodebuildName}:*'
+              - Effect: Allow
+                Action:
+                  - 's3:List*'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:Put*
+                  - s3:Get*
+                  - s3:HeadObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}/*'
+              - Effect: Allow
+                Action:
+                  - states:ListStateMachines
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:DescribeStateMachineForExecution
+                  - states:GetExecutionHistory
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                  - states:StartExecution
+                  - states:StopExecution
+                Resource:
+                  - !Ref DeployerStateArn
+              #
+              # TODO: Least privilege for this job
+              #
               - Effect: Allow
                 Action:
                   - 'cloudformation:CreateStack'
@@ -157,3 +206,5 @@ Resources:
                   - s3:HeadObject
                 Resource:
                   - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}/*'
+  
+  

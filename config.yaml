@@ -37,6 +37,7 @@
       template-deployer-repository-name: smlf-dataengineering-template-deployer
       deployer-codebuild-name: smlf-dataengineering-template-deployer-build
       deployer-artifact-bucket: smlf-dataengineering-deployer-artifact-bucket
+      deployer-state-arn: arn:aws:states:ap-southeast-1:908177370303:stateMachine:smlf-dataengineering-cfn-deployer
   lambdas: []
 
 - aws:
