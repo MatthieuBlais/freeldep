@@ -67,16 +67,15 @@ def create_stack(stack_name, template, parameters={}):
         if error.response['Error']['Code'] == 'ValidationError' and error.response['Error']['Message'] == 'No updates are to be performed.':
             print(error.response['Error']['Message'])
             return False
+        if error.response['Error']['Code'] == 'ValidationError' and error.response['Error']['Message'] == f'Stack with id {stack_name} does not exist':
+            cloudformation.create_stack(
+                StackName=stack_name,
+                TemplateBody=template,
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                Parameters=parameters,
+            )
+            return True
         raise
-    except Exception:
-        raise
-        # cloudformation.create_stack(
-        #     StackName=stack_name,
-        #     TemplateBody=template,
-        #     Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-        #     Parameters=parameters,
-        # )
-        # return True
 
 if __name__ == "__main__":
     

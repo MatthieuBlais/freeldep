@@ -67,7 +67,7 @@ def status_template(event, context):
             event['Status'] = 'FAIL'
         else:
             event['Status'] = status
-    else:
+    elif event['Action'] in ['DELETE_STACK']:
         if cfn.exists(event['TemplateName']):
             status = cfn.status(event['TemplateName'])
             if status in ['DELETE_COMPLETE']:
