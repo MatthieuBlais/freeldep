@@ -104,8 +104,7 @@ Resources:
             build:
               commands:
                 - aws s3 cp . s3://$ARTIFACTS_BUCKET/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
-                - cd compiler
-                - python3 service/main.py
+                - python3 compiler/service/main.py
 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
