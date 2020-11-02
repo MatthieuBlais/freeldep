@@ -102,6 +102,9 @@ if __name__ == "__main__":
             package_lambda(lam['location'],  lam['filename'])
             upload_package(lam['bucket'], lam['key'], lam['filename'])
 
+        if 'action' not in stack:
+            stack['action'] = 'create_or_update_stack'
         print(f"Triggering deployment: {parameters['name']}")
+        print(stack)
         exec_id = trigger_deploy(parameters['name'], template_location, stack['action'], parameters['parameters'])
         print(f"Execution id: {exec_id}")
