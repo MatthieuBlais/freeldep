@@ -10,9 +10,12 @@ import boto3
 import time
 import botocore
 import json
+import cfnlint.core
+
 
 CONFIG_FILENAME = "./config.yaml"
 COMPILED_TEMPLATE = "./compiled-template.yaml"
+REGIONS=['ap-southeast-1']
 
 s3 = boto3.client('s3')
 sfn = boto3.client('stepfunctions')
@@ -71,7 +74,19 @@ def trigger_deploy(stack_name, template_location, action, parameters={}):
     return execution_id
     
     
-
+def validate_template(template):
+    tmp_name = uuid.uuid1().hex + ".yaml"
+    with open(tmp_name, "w+") as f:
+        yaml.dump(template, f)
+    template = cfnlint.decode.cfn_yaml.load(tmp_name)
+    cfnlint.core.configure_logging(None)
+    rules = cfnlint.core.get_rules([], [], [], [], False, [])
+    matches = cfnlint.core.run_checks(
+        tmp_name,
+        template,
+        rules,
+        REGIONS)
+    print(matches)
 
 
 if __name__ == "__main__":
@@ -95,6 +110,7 @@ if __name__ == "__main__":
 
         print(f"Generating template: {stack['location']}")
         template = render(template, properties)
+
         template_location = upload_template(parameters['name'], template)
 
         print(f"Packaging Lambdas")
