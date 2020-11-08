@@ -66,8 +66,8 @@ Resources:
                 - pip3 install boto3 Jinja2 cfnlint
             build:
               commands:
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/main.py .
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/service.sh service.sh
+                - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/main.py .
+                - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/service.sh service.sh
                 - /bin/bash service.sh
                 - if [ -f ./bin/package.sh ]; then /bin/bash ./bin/package.sh; fi
                 - if [ -f ./config.yaml ]; then python3 main.py; fi
@@ -104,8 +104,8 @@ Resources:
                   - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}'
               - Effect: Allow
                 Action:
-                  - s3:Put*
-                  - s3:Get*
+                  - s3:PutObject
+                  - s3:GetObject
                   - s3:HeadObject
                 Resource:
                   - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}/*'
