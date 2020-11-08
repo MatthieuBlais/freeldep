@@ -68,8 +68,7 @@ Resources:
               commands:
                 - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/main.py .
                 - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/service.sh service.sh
-                - if [ -f ./bin/package.sh ]; then /bin/bash service.sh && /bin/bash ./bin/package.sh; fi
-                - if [ -f ./config.yaml ]; then /bin/bash service.sh && python3 main.py; fi
+                - /bin/bash service.sh
                 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
