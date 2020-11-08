@@ -4,6 +4,6 @@
 TO ADD:
 - cfnlint validation
 - tests / coverage
-- taskcat 
+- taskcat
 - keep-failed
 .precommit

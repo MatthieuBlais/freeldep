@@ -8,12 +8,12 @@ fi
 
 echo $CODEBUILD_GIT_BRANCH;
 
-if [ -f ./bin/package.sh ]; 
-then 
-  /bin/bash ./bin/package.sh; 
+if [ -f ./bin/package.sh ];
+then
+  /bin/bash ./bin/package.sh;
 fi
 
-if [ -f ./config.yaml ]; 
-then 
-  python3 main.py; 
+if [ -f ./config.yaml ];
+then
+  python3 main.py;
 fi

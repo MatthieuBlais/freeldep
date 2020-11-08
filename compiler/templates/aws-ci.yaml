@@ -32,7 +32,7 @@ Resources:
         detail-type:
           - CodeCommit Repository State Change
         resources:
-            - !GetAtt [TemplateDeployerRepository, Arn] 
+            - !GetAtt [TemplateDeployerRepository, Arn]
         detail:
           event:
           - referenceCreated
@@ -67,7 +67,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: 'codebuild:StartBuild'
-                Resource: 
+                Resource:
                   - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${DeployerCodebuildName}'
 
   DeployerCodeBuild:
@@ -185,5 +185,3 @@ Resources:
                   - 'codecommit:GitPull'
                 Resource:
                   - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${TemplateDeployerRepositoryName}'
-  
-  

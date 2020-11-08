@@ -22,7 +22,7 @@ Resources:
       Description: "Validate CFN template with cfnlint"
       FunctionName: !Sub "${StackPrefix}-deployer-validate-template"
       Handler: "validate.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaDeployerRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -36,7 +36,7 @@ Resources:
       Description: "Get output of test templates"
       FunctionName: !Sub "${StackPrefix}-deployer-get-testresults"
       Handler: "testresults.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaDeployerRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -50,7 +50,7 @@ Resources:
       Description: "Deploy CFN template"
       FunctionName: !Sub "${StackPrefix}-deployer-deploy-template"
       Handler: "deploy.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaCFNRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -69,7 +69,7 @@ Resources:
       Description: "Get status of CFN template"
       FunctionName: !Sub "${StackPrefix}-deployer-get-status"
       Handler: "status.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaDeployerRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -88,7 +88,7 @@ Resources:
       Description: "Delete failed stack"
       FunctionName: !Sub "${StackPrefix}-deployer-keepfailed"
       Handler: "keepfailed.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaCFNRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -107,7 +107,7 @@ Resources:
       Description: "Gracefully fails"
       FunctionName: !Sub "${StackPrefix}-deployer-failed"
       Handler: "failed.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaDeployerRole, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -358,7 +358,7 @@ Resources:
                   - s3:HeadObject
                 Resource:
                   - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
-                  
+
   LambdaCFNRole:
     Type: AWS::IAM::Role
     Properties:

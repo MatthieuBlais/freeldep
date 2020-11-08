@@ -26,7 +26,7 @@ Resources:
       Description: "Trigger Codebuild job"
       FunctionName: !Ref DeployerTriggerLambdaName
       Handler: "trigger.handler"
-      MemorySize: 128 
+      MemorySize: 128
       Role: !GetAtt [LambdaServiceRoleArn, Arn]
       Runtime: python3.8
       Timeout: 15
@@ -71,7 +71,7 @@ Resources:
                 - /bin/bash service.sh
                 - if [ -f ./bin/package.sh ]; then /bin/bash ./bin/package.sh; fi
                 - if [ -f ./config.yaml ]; then python3 main.py; fi
-                
+
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role
     Properties:
@@ -157,6 +157,5 @@ Resources:
                   - "*"
               - Effect: Allow
                 Action: 'codebuild:StartBuild'
-                Resource: 
+                Resource:
                   - !GetAtt [DeployerCodeBuild, Arn]
-            

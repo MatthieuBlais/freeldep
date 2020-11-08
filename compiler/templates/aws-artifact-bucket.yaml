@@ -6,8 +6,8 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: {{ ArtifactBucket }}
-      BucketEncryption: 
-        ServerSideEncryptionConfiguration: 
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       LifecycleConfiguration:

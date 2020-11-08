@@ -1,11 +1,17 @@
 import botocore
 
+
 class CloudFormation:
     """Deploys CloudFormation templates to AWS"""
 
-    CREATE_COMPLETE = ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
-    DEPLOY_FAILED = ['DELETE_FAILED', 'CREATE_FAILED', 'ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']
-    DELETE_COMPLETE = ['DELETE_COMPLETE']
+    CREATE_COMPLETE = ["CREATE_COMPLETE", "UPDATE_COMPLETE"]
+    DEPLOY_FAILED = [
+        "DELETE_FAILED",
+        "CREATE_FAILED",
+        "ROLLBACK_COMPLETE",
+        "UPDATE_ROLLBACK_COMPLETE",
+    ]
+    DELETE_COMPLETE = ["DELETE_COMPLETE"]
 
     def __init__(self, cfn_client, s3_client):
         self.cloudformation = cfn_client
@@ -18,7 +24,9 @@ class CloudFormation:
         :param parameters: dictionary of parameters for the cfn stack
         """
         try:
-            if (action == "UPDATE_STACK" or action == "CREATE_OR_UPDATE_STACK") and self.exists(stack_name):
+            if (
+                action == "UPDATE_STACK" or action == "CREATE_OR_UPDATE_STACK"
+            ) and self.exists(stack_name):
                 self._update_cfn_stack(stack_name, template_path, parameters)
             elif action == "CREATE_STACK" or action == "CREATE_OR_UPDATE_STACK":
                 self._create_cfn_stack(stack_name, template_path, parameters)
@@ -98,8 +106,12 @@ class CloudFormation:
                 ],
             )
         except botocore.exceptions.ClientError as error:
-            if error.response['Error']['Code'] == 'ValidationError' and error.response['Error']['Message'] == 'No updates are to be performed.':
-                print(error.response['Error']['Message'])
+            if (
+                error.response["Error"]["Code"] == "ValidationError"
+                and error.response["Error"]["Message"]
+                == "No updates are to be performed."
+            ):
+                print(error.response["Error"]["Message"])
                 return False
 
     def _get_stack(self, stack_name):
@@ -121,14 +133,15 @@ class CloudFormation:
             raise
 
 
-
 class BadInputException(Exception):
     def __init__(self, message):
         super().__init__(message)
 
+
 class InternalErrorException(Exception):
     def __init__(self, message):
         super().__init__(message)
+
 
 class BadTemplateException(Exception):
     def __init__(self, message):
