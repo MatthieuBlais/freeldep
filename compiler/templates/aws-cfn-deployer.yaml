@@ -13,19 +13,19 @@ Parameters:
 
 Resources:
 
-  ValidateTemplate:
-    Type: "AWS::Lambda::Function"
-    Properties:
-      Code:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: {{ LambdaCodeKey }}
-      Description: "Validate CFN template with cfnlint"
-      FunctionName: !Sub "${StackPrefix}-deployer-validate-template"
-      Handler: "validate.handler"
-      MemorySize: 128
-      Role: !GetAtt [LambdaDeployerRole, Arn]
-      Runtime: python3.8
-      Timeout: 15
+  # ValidateTemplate:
+  #   Type: "AWS::Lambda::Function"
+  #   Properties:
+  #     Code:
+  #       S3Bucket: !Ref ArtifactBucket
+  #       S3Key: {{ LambdaCodeKey }}
+  #     Description: "Validate CFN template with cfnlint"
+  #     FunctionName: !Sub "${StackPrefix}-deployer-validate-template"
+  #     Handler: "validate.handler"
+  #     MemorySize: 128
+  #     Role: !GetAtt [LambdaDeployerRole, Arn]
+  #     Runtime: python3.8
+  #     Timeout: 15
 
   GetTestResults:
     Type: "AWS::Lambda::Function"
@@ -118,13 +118,8 @@ Resources:
       StateMachineName: !Ref StateMachineName
       DefinitionString: |-
         {
-          "StartAt": "Validate template",
+          "StartAt": "Run tests?",
           "States": {
-            "Validate template": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-validate-template",
-              "Next": "Run tests?"
-            },
             "Run tests?": {
               "Type": "Choice",
               "Choices": [
@@ -256,7 +251,7 @@ Resources:
               runtime-versions:
                 python: 3.8
               commands:
-                - pip3 install boto3 taskcat
+                - pip3 install boto3 taskcat cfn-lint
             build:
               commands:
                 - aws s3 cp $TEMPLATE_LOCATION .

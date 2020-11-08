@@ -22,7 +22,7 @@
     lambda-code-key: 'packages/smlf-dataengineering-cfn-deployer/lambdas/'
   lambdas:
     - name: package
-      location: ./compiler/deployer/
+      location: ./compiler/deployer/deployer.zip
       template-attribute: lambda-code-key
       bucket: smlf-dataengineering-deployer-artifact-bucket
 

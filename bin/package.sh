@@ -10,4 +10,16 @@ echo $CODEBUILD_GIT_BRANCH;
 
 aws s3 cp . s3://$ARTIFACTS_BUCKET/$CODEBUILD_GIT_BRANCH/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py" --include "*.sh"
 
+
+cd ./compiler/deployer/
+rm -f deployer.zip
+zip -r9 deployer.zip . -x \*.git\* -x \*.pyc\* -x \*__pycache__\*
+mkdir ./packages
+pip3 install -r requirements.txt --target packages
+cd packages
+zip -g -r ../deployer.zip .
+cd ..
+rm -rf packages
+cd ../..
+
 python3 compiler/service/main.py

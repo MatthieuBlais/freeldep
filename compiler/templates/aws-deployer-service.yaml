@@ -63,7 +63,7 @@ Resources:
               runtime-versions:
                 python: 3.8
               commands:
-                - pip3 install boto3 Jinja2 cfnlint
+                - pip3 install boto3 Jinja2 cfn-lint
             build:
               commands:
                 - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/main.py .

@@ -28,9 +28,9 @@ s3 = boto3.client("s3")
 
 
 def valid_event(event):
-    return len(REQUIRED_EVENT_PARAMS) == [
-        x for x in event if x in REQUIRED_EVENT_PARAMS
-    ]
+    return len(REQUIRED_EVENT_PARAMS) == len(
+        [x for x in event if x in REQUIRED_EVENT_PARAMS]
+    )
 
 
 def get_error_message(event):

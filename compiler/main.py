@@ -1,4 +1,4 @@
-import os
+import os.path
 import uuid
 import zipfile
 from datetime import datetime
@@ -6,6 +6,7 @@ from os.path import basename
 
 import boto3
 import botocore
+import cfnlint.core
 import yaml
 from jinja2 import Template  # pylint: disable=import-error
 
@@ -32,10 +33,13 @@ def render(tmplt, properties):
 
 
 def package_lambda(local_path, filename):
-    zipf = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
-    for root, _, files in os.walk(local_path):
-        for f in files:
-            zipf.write(os.path.join(root, f), basename(f))
+    if os.path.isfile(local_path):
+        os.rename(local_path, filename)
+    else:
+        zipf = zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED)
+        for root, _, files in os.walk(local_path):
+            for f in files:
+                zipf.write(os.path.join(root, f), basename(f))
 
 
 def upload_package(bucket, key, filename):
@@ -55,6 +59,18 @@ def generate_lambda_key(lambdas, properties):
         lambdas[i]["filename"] = uname
         lambdas[i]["key"] = properties[lambdas[i]["template-attribute"]]
     return properties, lambdas
+
+
+def run_checks(template):
+    with open(COMPILED_TEMPLATE, "w+") as f:
+        f.write(template)
+    template = cfnlint.decode.cfn_yaml.load(COMPILED_TEMPLATE)
+    cfnlint.core.configure_logging(None)
+    rules = cfnlint.core.get_rules([], [], [], [], False, [])
+    os.remove(COMPILED_TEMPLATE)
+    return cfnlint.core.run_checks(
+        COMPILED_TEMPLATE, template, rules, [os.environ["AWS_REGION"]]
+    )
 
 
 def create_stack(stack_name, template, parameters={}):
@@ -117,16 +133,24 @@ if __name__ == "__main__":
 
         print(f"Generating template: {stack['location']}")
         template = render(template, properties)
+        checks = run_checks(template)
+        for check in checks:
+            print(check)
         # with open(COMPILED_TEMPLATE, "w+") as f:
         #     f.write(template)
 
-        print("Packaging Lambdas")
-        for lam in lambdas:
-            package_lambda(lam["location"], lam["filename"])
-            upload_package(lam["bucket"], lam["key"], lam["filename"])
+        if len(checks) == 0:
+            print("Packaging Lambdas")
+            for lam in lambdas:
+                package_lambda(lam["location"], lam["filename"])
+                upload_package(lam["bucket"], lam["key"], lam["filename"])
 
-        print(f"Triggering deployment: {parameters['name']}")
-        success = create_stack(parameters["name"], template, parameters["parameters"])
+            print(f"Triggering deployment: {parameters['name']}")
+            success = create_stack(
+                parameters["name"], template, parameters["parameters"]
+            )
 
-        if success:
-            print("Done: check cfn for deployment monitoring")
+            if success:
+                print("Done: check cfn for deployment monitoring")
+        else:
+            print("Error: Doesnt pass cfn-lint")

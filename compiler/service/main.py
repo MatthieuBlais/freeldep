@@ -6,11 +6,14 @@ from datetime import datetime
 from os.path import basename
 
 import boto3
+import cfnlint.core
 import yaml
 from jinja2 import Template  # pylint: disable=import-error
 
 CONFIG_FILENAME = "./config.yaml"
 TEST_BRANCHES = ["preprod", "prod", "master"]
+COMPILED_TEMPLATE = "compiled-template.yaml"
+
 
 s3 = boto3.client("s3")
 sfn = boto3.client("stepfunctions")
@@ -64,6 +67,18 @@ def upload_template(template_name, template):
     return f"s3://{os.environ['ARTIFACTS_BUCKET']}/{key}"
 
 
+def run_checks(template):
+    with open(COMPILED_TEMPLATE, "w+") as f:
+        f.write(template)
+    template = cfnlint.decode.cfn_yaml.load(COMPILED_TEMPLATE)
+    cfnlint.core.configure_logging(None)
+    rules = cfnlint.core.get_rules([], [], [], [], False, [])
+    os.remove(COMPILED_TEMPLATE)
+    return cfnlint.core.run_checks(
+        COMPILED_TEMPLATE, template, rules, [os.environ["AWS_REGION"]]
+    )
+
+
 def run_test():
     if "CODEBUILD_GIT_BRANCH" not in os.environ:
         return False
@@ -78,6 +93,7 @@ def trigger_deploy(
     parameters={},
     notification_arn=None,
     keep_failed=False,
+    valid=True,
 ):
     execution_id = stack_name + "-" + uuid.uuid1().hex
     sfn.start_execution(
@@ -89,6 +105,7 @@ def trigger_deploy(
                 "TemplateLocation": template_location,
                 "Action": action.upper(),
                 "Test": run_test(),
+                "Valid": valid,
                 "KeepFailed": keep_failed,
                 "NotifyOnFailure": notification_arn
                 if notification_arn is not None
@@ -124,6 +141,9 @@ if __name__ == "__main__":
 
         print(f"Generating template: {stack['location']}")
         template = render(template, properties)
+        checks = run_checks(template)
+        for check in checks:
+            print(check)
 
         template_location = upload_template(parameters["name"], template)
 
@@ -143,5 +163,6 @@ if __name__ == "__main__":
             parameters["parameters"],
             notification_arn=stack["notifiy"] if "notify" in stack else None,
             keep_failed=stack["keep-failed"] if "keep-failed" in stack else False,
+            valid=len(checks) == 0,
         )
         print(f"Execution id: {exec_id}")

@@ -1,11 +1,6 @@
 {
-  "StartAt": "Validate template",
+  "StartAt": "Run tests?",
   "States": {
-    "Validate template": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-validate-template",
-      "Next": "Run tests?"
-    },
     "Run tests?": {
       "Type": "Choice",
       "Choices": [
