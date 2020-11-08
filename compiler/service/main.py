@@ -126,6 +126,7 @@ if __name__ == "__main__":
     config = read_yaml(CONFIG_FILENAME)
 
     for stack in config:
+        print(json.dumps(stack, indent=4))
         template = read_txt(stack["location"])
 
         parameters, lambdas = generate_lambda_key(stack["lambdas"], stack["template"])
@@ -155,7 +156,7 @@ if __name__ == "__main__":
         if "action" not in stack:
             stack["action"] = "create_or_update_stack"
         print(f"Triggering deployment: {parameters['name']}")
-        print(stack)
+        print(json.dumps(stack, indent=4))
         exec_id = trigger_deploy(
             parameters["name"],
             template_location,
