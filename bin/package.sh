@@ -8,6 +8,6 @@ fi
 
 echo $CODEBUILD_GIT_BRANCH;
 
-aws s3 cp . s3://$ARTIFACTS_BUCKET/$CODEBUILD_GIT_BRANCH/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py"
+aws s3 cp . s3://$ARTIFACTS_BUCKET/$CODEBUILD_GIT_BRANCH/deployer/ --recursive --exclude "*" --include "*.yaml" --include "*.py" --include "*.sh"
 
 python3 compiler/service/main.py
