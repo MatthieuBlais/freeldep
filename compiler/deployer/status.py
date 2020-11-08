@@ -6,6 +6,9 @@ from utils import CloudFormation
 from utils import BadInputException
 from utils import InternalErrorException
 
+CREATE_ACTIONS = ["UPDATE_STACK", "CREATE_OR_UPDATE_STACK", "CREATE_STACK"]
+DELETE_ACTIONS = ['DELETE_STACK']
+
 if "ASSUME_ROLE_ARN" in os.environ:
     sts = boto3.client('sts')
     role = sts.assume_role(
@@ -21,65 +24,34 @@ if "ASSUME_ROLE_ARN" in os.environ:
 else:
     cloudformation = boto3.client('cloudformation')
 
-s3 = boto3.client('s3')
+def set_status(success):
+    return 'SUCCESS' if success else 'FAIL'
 
-def valid_deploy_event(event):
-    if 'TemplateName' not in event:
-        return False
-    if 'TemplateLocation' not in event:
-        return False
-    if 'Action' not in event:
-        return False
-    if 'Parameters' not in event:
-        return False
-    return True
+def handler(event, context):
 
-def get_error_message(event):
-    return f"""Template deployer failed: {json.dumps(event)}"""
+    print(json.dumps(event, indent=4))
 
-def deploy_template(event, context):
+    cfn = CloudFormation(cloudformation, None)
 
-    print(json.dumps(event))
-
-    if not valid_deploy_event(event):
-        raise BadInputException('Event is not valid')
-
-    cfn = CloudFormation(cloudformation, s3)
-    success = cfn.deploy(event['TemplateName'], event['TemplateLocation'], event['Parameters'], event['Action'])
-
-    if not success:
-        raise InternalErrorException('Template not being deployed')
-
-    event["ErrorMessage"] = get_error_message(event)
-
-    return event
-
-
-def status_template(event, context):
-
-    cfn = CloudFormation(cloudformation, s3)
-
-    if event['Action'] in ["UPDATE_STACK", "CREATE_OR_UPDATE_STACK", "CREATE_STACK"]:
+    if event['Action'] in CREATE_ACTIONS:
         status = cfn.status(event['TemplateName'])
-        if status in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
-            event['Status'] = 'SUCCESS'
-        elif status in ['CREATE_FAILED', 'ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']:
-            event['Status'] = 'FAIL'
+        if status in cfn.CREATE_COMPLETE:
+            event['Status'] = set_status(success=True)
+        elif status in cfn.DEPLOY_FAILED:
+            event['Status'] = set_status(success=False)
         else:
             event['Status'] = status
-    elif event['Action'] in ['DELETE_STACK']:
+    elif event['Action'] in DELETE_ACTIONS:
         if cfn.exists(event['TemplateName']):
             status = cfn.status(event['TemplateName'])
-            if status in ['DELETE_COMPLETE']:
-                event['Status'] = 'SUCCESS'
-            if status in ['DELETE_FAILED', 'ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']:
-                event['Status'] = 'FAIL'
+            if status in cfn.DELETE_COMPLETE:
+                event['Status'] = set_status(success=True)
+            if status in cfn.DEPLOY_FAILED:
+                event['Status'] = set_status(success=False)
             event['Status'] = status
         else:
-            event['Status'] = 'SUCCESS'
+            event['Status'] = set_status(success=True)
     
-    print(json.dumps(event))
-
     return event
 
 
@@ -95,4 +67,4 @@ if __name__ == "__main__":
             "DeployerTriggerLambdaName": "smlf-dataengineering-deployer-trigger-service"
         }
     }
-    print(deploy_template(event, {}))
+    print(handler(event, {}))

@@ -21,8 +21,8 @@ Resources:
     Type: "AWS::Lambda::Function"
     Properties:
       Code:
-        S3Bucket: !Ref DeployerArtifactBucket
-        S3Key: packages/smlf-dataengineering-cfn-deployer/lambdas/service_20201108_1517_7878cbc0219211eb8ea9acde48001122.zip
+        S3Bucket: !Ref DeployerArtifactBucketsdsd
+        S3Key: packages/smlf-dataengineering-cfn-deployer/lambdas/service_20201102_1633_251895541d2911eb89e30242ac110002.zip
       Description: "Trigger Codebuild job"
       FunctionName: !Ref DeployerTriggerLambdaName
       Handler: "trigger.handler"
@@ -63,14 +63,12 @@ Resources:
               runtime-versions:
                 python: 3.8
               commands:
-                - pip3 install boto3 Jinja2 cfnlint
+                - pip3 install boto3 Jinja2
             build:
               commands:
                 - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/main.py .
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/service.sh service.sh
-                - /bin/bash service.sh
-                - if [ -f ./bin/package.sh ]; then /bin/bash ./bin/package.sh; fi
-                - if [ -f ./config.yaml ]; then python3 main.py; fi
+                - if [ -f ./bin/package.sh ]; then /bin/bash ./bin/package.sh"; fi
+                - if [ -f ./config.yaml ]; then python3 main.py"; fi
                 
   CodebuildServiceRoleArn:
     Type: AWS::IAM::Role

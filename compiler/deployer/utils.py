@@ -3,6 +3,10 @@ import botocore
 class CloudFormation:
     """Deploys CloudFormation templates to AWS"""
 
+    CREATE_COMPLETE = ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
+    DEPLOY_FAILED = ['DELETE_FAILED', 'CREATE_FAILED', 'ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']
+    DELETE_COMPLETE = ['DELETE_COMPLETE']
+
     def __init__(self, cfn_client, s3_client):
         self.cloudformation = cfn_client
         self.s3 = s3_client
@@ -42,7 +46,7 @@ class CloudFormation:
         :param stack_name: name of the cfn stack
         """
         try:
-            return self._get_stack_status(stack_name)
+            return self._get_stack(stack_name)["StackStatus"]
         except Exception:
             raise
 
@@ -98,15 +102,6 @@ class CloudFormation:
                 print(error.response['Error']['Message'])
                 return False
 
-    def _get_stack_status(self, stack_name):
-        """Get a cfn stack status
-        :param stack_name: name of the cfn stack
-        """
-        try:
-            return self._get_stack(stack_name)["StackStatus"]
-        except Exception:
-            raise
-
     def _get_stack(self, stack_name):
         """Get a cfn stack status
         :param stack_name: name of the cfn stack
@@ -132,5 +127,9 @@ class BadInputException(Exception):
         super().__init__(message)
 
 class InternalErrorException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+class BadTemplateException(Exception):
     def __init__(self, message):
         super().__init__(message)

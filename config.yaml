@@ -14,16 +14,15 @@
   location: ./compiler/templates/aws-cfn-deployer.yaml
   template:
     name: smlf-dataengineering-cfn-deployer
-    parameters: {}
-    state-machine-name: 'smlf-dataengineering-cfn-deployer'
+    parameters:
+      stack-prefix: 'smlf-dataengineering-cfn'
+      artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
+      state-machine-name: 'smlf-dataengineering-cfn-deployer'
     stack-prefix: 'smlf-dataengineering-cfn'
-    artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
     lambda-code-key: 'packages/smlf-dataengineering-cfn-deployer/lambdas/'
-    subscribers:
-      - matthieu.blais1@gmail.com
   lambdas:
     - name: package
-      location: ./compiler/package/
+      location: ./compiler/deployer/
       template-attribute: lambda-code-key
       bucket: smlf-dataengineering-deployer-artifact-bucket
 

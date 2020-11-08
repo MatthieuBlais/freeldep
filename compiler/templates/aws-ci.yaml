@@ -183,27 +183,8 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DeployerCodebuildName}:*'
-              - Effect: Allow
-                Action:
                   - 'codecommit:GitPull'
                 Resource:
                   - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${TemplateDeployerRepositoryName}'
-              - Effect: Allow
-                Action:
-                  - 's3:List*'
-                Resource:
-                  - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}'
-              - Effect: Allow
-                Action:
-                  - s3:Put*
-                  - s3:Get*
-                  - s3:HeadObject
-                Resource:
-                  - !Sub 'arn:aws:s3:::${DeployerArtifactBucket}/*'
   
   

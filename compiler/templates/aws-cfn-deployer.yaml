@@ -1,31 +1,57 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: A step function to deploy CFN templates
+Parameters:
+
+  ArtifactBucket:
+    Type: String
+
+  StackPrefix:
+    Type: String
+
+  StateMachineName:
+    Type: String
+
 Resources:
 
-  DeploymentFailureTopic:
-    Type: AWS::SNS::Topic
+  ValidateTemplate:
+    Type: "AWS::Lambda::Function"
     Properties:
-      DisplayName: {{ StackPrefix }}-deployer-notification
-      TopicName: {{ StackPrefix }}-deployer-notification
-      {% if Subscribers is defined %}
-      Subscription:
-      {% for subscriber in Subscribers %}
-        - Endpoint: {{ subscriber }}
-          Protocol: email
-      {% endfor %}
-      {% endif %}
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Validate CFN template with cfnlint"
+      FunctionName: !Sub "${StackPrefix}-deployer-validate-template"
+      Handler: "validate.handler"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+
+  GetTestResults:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Get output of test templates"
+      FunctionName: !Sub "${StackPrefix}-deployer-get-testresults"
+      Handler: "testresults.handler"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
 
   DeployTemplates:
     Type: "AWS::Lambda::Function"
     Properties:
       Code:
-        S3Bucket: {{ ArtifactBucket }}
+        S3Bucket: !Ref ArtifactBucket
         S3Key: {{ LambdaCodeKey }}
       Description: "Deploy CFN template"
-      FunctionName: {{ StackPrefix }}-deployer-deploy-template
-      Handler: "deployer.deploy_template"
+      FunctionName: !Sub "${StackPrefix}-deployer-deploy-template"
+      Handler: "deploy.handler"
       MemorySize: 128 
-      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Role: !GetAtt [LambdaCFNRole, Arn]
       Runtime: python3.8
       Timeout: 15
       {% if AwsDeploymentRole is defined %}
@@ -38,11 +64,11 @@ Resources:
     Type: "AWS::Lambda::Function"
     Properties:
       Code:
-        S3Bucket: {{ ArtifactBucket }}
+        S3Bucket: !Ref ArtifactBucket
         S3Key: {{ LambdaCodeKey }}
       Description: "Get status of CFN template"
-      FunctionName: {{ StackPrefix }}-deployer-get-status
-      Handler: "deployer.status_template"
+      FunctionName: !Sub "${StackPrefix}-deployer-get-status"
+      Handler: "status.handler"
       MemorySize: 128 
       Role: !GetAtt [LambdaDeployerRole, Arn]
       Runtime: python3.8
@@ -53,14 +79,91 @@ Resources:
           ASSUME_ROLE_ARN: {{ AwsDeploymentRole }}
       {% endif %}
 
+  KeepFailedLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Delete failed stack"
+      FunctionName: !Sub "${StackPrefix}-deployer-keepfailed"
+      Handler: "keepfailed.handler"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaCFNRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      {% if AwsDeploymentRole is defined %}
+      Environment:
+        Variables:
+          ASSUME_ROLE_ARN: {{ AwsDeploymentRole }}
+      {% endif %}
+
+  FailedDeployment:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Gracefully fails"
+      FunctionName: !Sub "${StackPrefix}-deployer-failed"
+      Handler: "failed.handler"
+      MemorySize: 128 
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+
   TemplateDeployer:
     Type: AWS::StepFunctions::StateMachine
     Properties:
-      StateMachineName: {{ StateMachineName }}
+      StateMachineName: !Ref StateMachineName
       DefinitionString: |-
         {
-          "StartAt": "Deploy template",
+          "StartAt": "Validate template",
           "States": {
+            "Validate template": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-validate-template",
+              "Next": "Run tests?"
+            },
+            "Run tests?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Test",
+                  "BooleanEquals": false,
+                  "Next": "Deploy?"
+                }
+              ],
+              "Default": "Test template"
+            },
+            "Test template": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::codebuild:batchDeleteBuilds",
+              "Parameters": {
+                "Ids.$": "$.Build.Arn"
+              },
+              "Next": "Get test results"
+            },
+            "Get test results": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-get-testresults",
+              "Next": "Deploy?"
+            },
+            "Deploy?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Valid",
+                  "BooleanEquals": true,
+                  "Next": "Deploy template"
+                },
+                {
+                  "Variable": "$.Valid",
+                  "BooleanEquals": false,
+                  "Next": "Deployment failed"
+                }
+              ]
+            },
             "Deploy template": {
               "Type": "Task",
               "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-deploy-template",
@@ -87,30 +190,79 @@ Resources:
                 {
                   "Variable": "$.Status",
                   "StringEquals": "FAIL",
-                  "Next": "Notify Admins"
+                  "Next": "Keep failed?"
                 }
               ],
               "Default": "Wait 10s"
             },
-            "Notify Admins": {
+            "Keep failed?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.KeepFailed",
+                  "BooleanEquals": false,
+                  "Next": "Clean-up"
+                }
+              ],
+              "Default":"Deployment failed"
+            },
+            "Clean-up": {
               "Type": "Task",
-              "Resource": "arn:aws:states:::sns:publish",
-              "Parameters": {
-                "TopicArn": "arn:aws:sns:{{ AwsRegion }}:{{ AwsAccountId }}:{{ StackPrefix }}-deployer-notification",
-                "Message.$": "$.ErrorMessage"
-              },
-              "Next": "Fail"
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-keepfailed",
+              "Next": "Deployment failed"
             },
             "Success": {
               "Type": "Succeed"
             },
+            "Deployment failed": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-failed",
+              "Next": "Fail"
+            },
             "Fail": {
               "Type": "Fail",
-              "Cause": "$.ErrorMessage"
+              "Cause": "$.Error.Cause"
             }
           }
         }
       RoleArn: !GetAtt [StateMachineRole, Arn]
+
+  DeployerCodeBuild:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub "${StackPrefix}-deployer-tests"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: To test cfn stacks with taskcat
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: "aws/codebuild/standard:4.0"
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+        - Name: ARTIFACTS_BUCKET
+          Type: PLAINTEXT
+          Value: !Ref ArtifactBucket
+        - Name: TEMPLATE_LOCATION
+          Type: PLAINTEXT
+          Value: ''
+      ServiceRole: !GetAtt [TestCodebuildRole, Arn]
+      Source:
+        Type: S3
+        Location: !Join ["/", [!Ref ArtifactBucket, "deployer/tests/"]]
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+              commands:
+                - pip3 install boto3 taskcat
+            build:
+              commands:
+                - aws s3 cp $TEMPLATE_LOCATION .
+                - python3 preprocess.py
+                - taskcat test run
+                - python3 postprocess.py
 
   StateMachineRole:
     Type: AWS::IAM::Role
@@ -126,20 +278,20 @@ Resources:
               - sts:AssumeRole
       Path: '/'
       Policies:
-        - PolicyName: StateMachinePolicy
+        - PolicyName: !Sub "${StackPrefix}-deployer-state-policy"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - lambda:InvokeFunction
+                  - codebuild:StartBuild
                 Resource:
-                  - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:{{ StackPrefix }}-deployer-*"
+                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${StackPrefix}-deployer-tests'
               - Effect: Allow
                 Action:
-                  - sns:Publish
+                  - lambda:InvokeFunction
                 Resource:
-                  - arn:aws:sns:*:*:{{ StackPrefix }}-deployer-notification
+                  - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StackPrefix}-deployer-*"
               - Effect: Allow
                 Action:
                   - logs:CreateLogDelivery
@@ -169,7 +321,45 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule"
 
-  LambdaDeployerRole:
+  TestCodebuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub "${StackPrefix}-deployer-test-cfn-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-deployer-tests:*'
+              - Effect: Allow
+                Action:
+                  - 's3:List*'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:HeadObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+                  
+  LambdaCFNRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -184,51 +374,57 @@ Resources:
       Path: '/'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
-      # Policies:
-      #   - PolicyName: StateMachinePolicy
-      #     PolicyDocument:
-      #       Version: '2012-10-17'
-      #       Statement:
-      #         {% if AwsDeploymentRole is defined %}
-      #         - Effect: Allow
-      #           Action:
-      #             - sts:AssumeRole
-      #           Resource:
-      #             - {{ AwsDeploymentRole }}
-      #         {% endif %}
-      #         - Effect: Allow
-      #           Action:
-      #             - s3:ListBucket
-      #             - s3:GetBucketAcl
-      #           Resource:
-      #             - arn:aws:s3:::{{ ArtifactBucket }}
-      #         - Effect: Allow
-      #           Action:
-      #             - s3:HeadObject
-      #             - s3:GetObjectTagging
-      #             - s3:GetObject
-      #             - s3:GetObjectAcl
-      #             - s3:GetObjectTagging
-      #           Resource:
-      #             - arn:aws:s3:::{{ ArtifactBucket }}/*
-      #         - Effect: Allow
-      #           Action:
-      #             - logs:CreateLogGroup
-      #             - logs:CreateLogStream
-      #             - logs:PutLogEvents
-      #           Resource:
-      #             - "*"
-      #         - Effect: Allow
-      #           Action:
-      #             - 'cloudformation:CreateStack'
-      #             - 'cloudformation:DeleteStack'
-      #             - 'cloudformation:DescribeStacks'
-      #             - 'cloudformation:UpdateStack'
-      #             - 'cloudformation:CreateChangeSet'
-      #             - 'cloudformation:DeleteChangeSet'
-      #             - 'cloudformation:DescribeChangeSet'
-      #             - 'cloudformation:ExecuteChangeSet'
-      #             - 'cloudformation:SetStackPolicy'
-      #             - 'cloudformation:ValidateTemplate'
-      #             - 'iam:PassRole'
-      #           Resource: '*'
+
+  LambdaDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: StateMachinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Sub "arn:aws:sns:*:*:${StackPrefix}-deployer-*"
+              {% if AwsDeploymentRole is defined %}
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - {{ AwsDeploymentRole }}
+              {% endif %}
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketAcl
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}"
+              - Effect: Allow
+                Action:
+                  - s3:HeadObject
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:DescribeStacks'
+                Resource: '*'

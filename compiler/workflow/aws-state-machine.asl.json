@@ -1,6 +1,50 @@
 {
-  "StartAt": "Deploy template",
+  "StartAt": "Validate template",
   "States": {
+    "Validate template": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-validate-template",
+      "Next": "Run tests?"
+    },
+    "Run tests?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Test",
+          "BooleanEquals": false,
+          "Next": "Deploy?"
+        }
+      ],
+      "Default": "Test template"
+    },
+    "Test template": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::codebuild:batchDeleteBuilds",
+      "Parameters": {
+        "Ids.$": "$.Build.Arn"
+      },
+      "Next": "Get test results"
+    },
+    "Get test results": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-get-testresults",
+      "Next": "Deploy?"
+    },
+    "Deploy?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Valid",
+          "BooleanEquals": true,
+          "Next": "Deploy template"
+        },
+        {
+          "Variable": "$.Valid",
+          "BooleanEquals": false,
+          "Next": "Deployment failed"
+        }
+      ]
+    },
     "Deploy template": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-deploy-template",
@@ -27,26 +71,38 @@
         {
           "Variable": "$.Status",
           "StringEquals": "FAIL",
-          "Next": "Notify Admins"
+          "Next": "Keep failed?"
         }
       ],
       "Default": "Wait 10s"
     },
-    "Notify Admins": {
+    "Keep failed?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.KeepFailed",
+          "BooleanEquals": false,
+          "Next": "Clean-up"
+        }
+      ],
+      "Default":"Deployment failed"
+    },
+    "Clean-up": {
       "Type": "Task",
-      "Resource": "arn:aws:states:::sns:publish",
-      "Parameters": {
-        "TopicArn": "arn:aws:sns:{{ AwsRegion }}:{{ AwsAccountId }}:{{ StackPrefix }}-deployer-notification",
-        "Message.$": "$.ErrorMessage"
-      },
-      "Next": "Fail"
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-keepfailed",
+      "Next": "Deployment failed"
     },
     "Success": {
       "Type": "Succeed"
     },
+    "Deployment failed": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-failed",
+      "Next": "Fail"
+    },
     "Fail": {
       "Type": "Fail",
-      "Cause": "$.ErrorMessage"
+      "Cause": "$.Error.Cause"
     }
   }
 }

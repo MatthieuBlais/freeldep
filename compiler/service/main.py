@@ -10,12 +10,9 @@ import boto3
 import time
 import botocore
 import json
-import cfnlint.core
-
 
 CONFIG_FILENAME = "./config.yaml"
-COMPILED_TEMPLATE = "./compiled-template.yaml"
-REGIONS=['ap-southeast-1']
+TEST_BRANCHES = ["preprod", "prod", "master"]
 
 s3 = boto3.client('s3')
 sfn = boto3.client('stepfunctions')
@@ -53,11 +50,17 @@ def generate_lambda_key(lambdas, properties):
 
 def upload_template(template_name, template):
     name = datetime.now().strftime("%Y%m%d_%H%M_"+uuid.uuid1().hex+".yaml")
-    key = f"/templates/{template_name}/{name}"
+    key = f"templates/{template_name}/{name}"
     s3.put_object(Bucket=os.environ['ARTIFACTS_BUCKET'], Key=key, Body=template)
     return f"s3://{os.environ['ARTIFACTS_BUCKET']}/{key}"
 
-def trigger_deploy(stack_name, template_location, action, parameters={}):
+def run_test():
+    if 'CODEBUILD_GIT_BRANCH' not in os.environ:
+        return False
+    return False
+    # return os.environ['CODEBUILD_GIT_BRANCH'] in TEST_BRANCHES
+        
+def trigger_deploy(stack_name, template_location, action, parameters={}, notification_arn=None, keep_failed=False):
     execution_id = stack_name + "-" + uuid.uuid1().hex
     sfn.start_execution(
         stateMachineArn=os.environ['DEPLOYER_STATE_MACHINE_ARN'],
@@ -66,28 +69,15 @@ def trigger_deploy(stack_name, template_location, action, parameters={}):
             "TemplateName": stack_name,
             "TemplateLocation": template_location,
             "Action": action.upper(),
+            "Test": run_test(),
+            "KeepFailed": keep_failed,
+            "NotifyOnFailure": notification_arn if notification_arn is not None else '',
             "Parameters": {
                 "".join([x.title() for x in key.split('-')]): val for key, val in parameters.items()
             }
         })
     )
     return execution_id
-    
-    
-def validate_template(template):
-    tmp_name = uuid.uuid1().hex + ".yaml"
-    with open(tmp_name, "w+") as f:
-        yaml.dump(template, f)
-    template = cfnlint.decode.cfn_yaml.load(tmp_name)
-    cfnlint.core.configure_logging(None)
-    rules = cfnlint.core.get_rules([], [], [], [], False, [])
-    matches = cfnlint.core.run_checks(
-        tmp_name,
-        template,
-        rules,
-        REGIONS)
-    print(matches)
-
 
 if __name__ == "__main__":
     
@@ -122,5 +112,12 @@ if __name__ == "__main__":
             stack['action'] = 'create_or_update_stack'
         print(f"Triggering deployment: {parameters['name']}")
         print(stack)
-        exec_id = trigger_deploy(parameters['name'], template_location, stack['action'], parameters['parameters'])
+        exec_id = trigger_deploy(
+            parameters['name'], 
+            template_location, 
+            stack['action'], 
+            parameters['parameters'],
+            notification_arn=stack['notifiy'] if 'notify' in stack else None,
+            keep_failed=stack['keep-failed'] if 'keep-failed' in stack else False
+        )
         print(f"Execution id: {exec_id}")

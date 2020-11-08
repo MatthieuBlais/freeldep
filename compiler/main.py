@@ -98,6 +98,8 @@ if __name__ == "__main__":
 
         print(f"Generating template: {stack['location']}")
         template = render(template, properties)
+        # with open(COMPILED_TEMPLATE, "w+") as f:
+        #     f.write(template)
 
         print(f"Packaging Lambdas")
         for lam in lambdas:

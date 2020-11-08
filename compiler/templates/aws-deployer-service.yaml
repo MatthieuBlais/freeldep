@@ -67,6 +67,8 @@ Resources:
             build:
               commands:
                 - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/main.py .
+                - aws s3 cp s3://$ARTIFACTS_BUCKET/deployer/compiler/service/service.sh service.sh
+                - /bin/bash service.sh
                 - if [ -f ./bin/package.sh ]; then /bin/bash ./bin/package.sh; fi
                 - if [ -f ./config.yaml ]; then python3 main.py; fi
                 
