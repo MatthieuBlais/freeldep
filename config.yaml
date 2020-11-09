@@ -57,3 +57,16 @@
       location: ./compiler/service/
       template-attribute: lambda-code-key
       bucket: smlf-dataengineering-deployer-artifact-bucket
+
+- aws:
+    region: ap-southeast-1
+    account-id: 908177370303
+  location: ./compiler/templates/aws-notification.yaml
+  template:
+    name: smlf-dataengineering-cfn-deployer-notification-de
+    parameters:
+      topic-name: de
+      stack-prefix: 'smlf-dataengineering-cfn'
+    subscriptions:
+      - matthieu.blais1@gmail.com
+  lambdas: []

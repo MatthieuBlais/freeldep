@@ -143,6 +143,11 @@ Resources:
                     "Value": "{{ ArtifactBucket }}"
                   },
                   {
+                    "Name": "TEMPLATE_LOCATION",
+                    "Type": "PLAINTEXT",
+                    "Value.$": "$.TemplateLocation"
+                  },
+                  {
                     "Name": "TEST_TEMPLATE_LOCATION",
                     "Type": "PLAINTEXT",
                     "Value.$": "$.Test"
@@ -249,6 +254,9 @@ Resources:
         - Name: ARTIFACTS_BUCKET
           Type: PLAINTEXT
           Value: !Ref ArtifactBucket
+        - Name: TEMPLATE_LOCATION
+          Type: PLAINTEXT
+          Value: ''
         - Name: TEST_TEMPLATE_LOCATION
           Type: PLAINTEXT
           Value: ''
@@ -265,6 +273,7 @@ Resources:
                 - pip3 install boto3 taskcat cfn-lint
             build:
               commands:
+                - aws s3 cp $TEMPLATE_LOCATION .
                 - aws s3 cp $TEST_TEMPLATE_LOCATION .taskcat.yml
                 - taskcat test run
 
