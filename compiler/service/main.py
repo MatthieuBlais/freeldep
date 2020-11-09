@@ -85,7 +85,7 @@ def run_test(stack, template_location):
         or os.environ["CODEBUILD_GIT_BRANCH"] not in TEST_BRANCHES
     ):
         return ""
-    if "test" not in stack:
+    if "test" not in stack or stack["test"] == "":
         return ""
     taskcat = read_yaml(stack["test"])
     taskcat["project"]["s3_bucket"] = os.environ["ARTIFACTS_BUCKET"]

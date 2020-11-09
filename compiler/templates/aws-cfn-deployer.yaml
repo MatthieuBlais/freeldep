@@ -135,7 +135,7 @@ Resources:
               "Type": "Task",
               "Resource": "arn:aws:states:::codebuild:startBuild.sync",
               "Parameters": {
-                "JobName": "{{ StackPrefix }}-deployer-tests",
+                "ProjectName": "{{ StackPrefix }}-deployer-tests",
                 "EnvironmentVariablesOverride": [
                   {
                     "Name": "ARTIFACTS_BUCKET",
@@ -323,6 +323,7 @@ Resources:
                   - events:DescribeRule
                 Resource:
                   - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule"
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventForCodeBuildStartBuildRule"
 
   TestCodebuildRole:
     Type: AWS::IAM::Role
