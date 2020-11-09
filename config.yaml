@@ -18,11 +18,12 @@
       stack-prefix: 'smlf-dataengineering-cfn'
       artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
       state-machine-name: 'smlf-dataengineering-cfn-deployer'
+    artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
     stack-prefix: 'smlf-dataengineering-cfn'
     lambda-code-key: 'packages/smlf-dataengineering-cfn-deployer/lambdas/'
   lambdas:
     - name: package
-      location: ./compiler/deployer/deployer.zip
+      location: ./compiler/deployer/
       template-attribute: lambda-code-key
       bucket: smlf-dataengineering-deployer-artifact-bucket
 

@@ -79,11 +79,26 @@ def run_checks(template):
     )
 
 
-def run_test():
-    if "CODEBUILD_GIT_BRANCH" not in os.environ:
-        return False
-    return False
-    # return os.environ['CODEBUILD_GIT_BRANCH'] in TEST_BRANCHES
+def run_test(stack, template_location):
+    if (
+        "CODEBUILD_GIT_BRANCH" not in os.environ
+        or os.environ["CODEBUILD_GIT_BRANCH"] not in TEST_BRANCHES
+    ):
+        return ""
+    if "test" not in stack:
+        return ""
+    taskcat = read_yaml(stack["test"])
+    taskcat["project"]["s3_bucket"] = os.environ["ARTIFACTS_BUCKET"]
+    taskcat["project"]["name"] = "_tests/" + taskcat["project"]["name"]
+    location = (
+        "/".join(template_location.split("/")[:-1])
+        + "_tests/"
+        + template_location.split("/")[-1]
+    )
+    s3.put_object(
+        Bucket=os.environ["ARTIFACTS_BUCKET"], Key=location, Body=yaml.dump(taskcat)
+    )
+    return f"s3://{os.environ['ARTIFACTS_BUCKET']}/{location}"
 
 
 def trigger_deploy(
@@ -94,6 +109,7 @@ def trigger_deploy(
     notification_arn=None,
     keep_failed=False,
     valid=True,
+    test="",
 ):
     execution_id = stack_name + "-" + uuid.uuid1().hex
     sfn.start_execution(
@@ -104,7 +120,7 @@ def trigger_deploy(
                 "TemplateName": stack_name,
                 "TemplateLocation": template_location,
                 "Action": action.upper(),
-                "Test": run_test(),
+                "Test": test,
                 "Valid": valid,
                 "KeepFailed": keep_failed,
                 "NotifyOnFailure": notification_arn
@@ -165,5 +181,6 @@ if __name__ == "__main__":
             notification_arn=stack["notifiy"] if "notify" in stack else None,
             keep_failed=stack["keep-failed"] if "keep-failed" in stack else False,
             valid=len(checks) == 0,
+            test=run_test(stack, template_location),
         )
         print(f"Execution id: {exec_id}")

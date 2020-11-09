@@ -6,7 +6,7 @@
       "Choices": [
         {
           "Variable": "$.Test",
-          "BooleanEquals": false,
+          "StringEquals": "",
           "Next": "Deploy?"
         }
       ],
@@ -14,15 +14,26 @@
     },
     "Test template": {
       "Type": "Task",
-      "Resource": "arn:aws:states:::codebuild:batchDeleteBuilds",
+      "Resource": "arn:aws:states:::codebuild:startBuild.sync",
       "Parameters": {
-        "Ids.$": "$.Build.Arn"
+        "JobName": "{{ StackPrefix }}-deployer-tests",
+        "EnvironmentVariablesOverride": [
+          {
+            "Name": "ARTIFACTS_BUCKET",
+            "Type": "PLAINTEXT",
+            "Value": "{{ ArtifactBucket }}"
+          },
+          {
+            "Name": "TEST_TEMPLATE_LOCATION",
+            "Type": "PLAINTEXT",
+            "Value.$": "$.Test"
+          }
+        ]
       },
-      "Next": "Get test results"
-    },
-    "Get test results": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-get-testresults",
+      "Catch": [ {
+          "ErrorEquals": [ "States.ALL" ],
+          "Next": "Deployment failed"
+      } ],
       "Next": "Deploy?"
     },
     "Deploy?": {

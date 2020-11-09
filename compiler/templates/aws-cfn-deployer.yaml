@@ -125,7 +125,7 @@ Resources:
               "Choices": [
                 {
                   "Variable": "$.Test",
-                  "BooleanEquals": false,
+                  "StringEquals": "",
                   "Next": "Deploy?"
                 }
               ],
@@ -133,15 +133,26 @@ Resources:
             },
             "Test template": {
               "Type": "Task",
-              "Resource": "arn:aws:states:::codebuild:batchDeleteBuilds",
+              "Resource": "arn:aws:states:::codebuild:startBuild.sync",
               "Parameters": {
-                "Ids.$": "$.Build.Arn"
+                "JobName": "{{ StackPrefix }}-deployer-tests",
+                "EnvironmentVariablesOverride": [
+                  {
+                    "Name": "ARTIFACTS_BUCKET",
+                    "Type": "PLAINTEXT",
+                    "Value": "{{ ArtifactBucket }}"
+                  },
+                  {
+                    "Name": "TEST_TEMPLATE_LOCATION",
+                    "Type": "PLAINTEXT",
+                    "Value.$": "$.Test"
+                  }
+                ]
               },
-              "Next": "Get test results"
-            },
-            "Get test results": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-get-testresults",
+              "Catch": [ {
+                  "ErrorEquals": [ "States.ALL" ],
+                  "Next": "Deployment failed"
+              } ],
               "Next": "Deploy?"
             },
             "Deploy?": {
@@ -237,13 +248,12 @@ Resources:
         - Name: ARTIFACTS_BUCKET
           Type: PLAINTEXT
           Value: !Ref ArtifactBucket
-        - Name: TEMPLATE_LOCATION
+        - Name: TEST_TEMPLATE_LOCATION
           Type: PLAINTEXT
           Value: ''
       ServiceRole: !GetAtt [TestCodebuildRole, Arn]
       Source:
-        Type: S3
-        Location: !Join ["/", [!Ref ArtifactBucket, "deployer/tests/"]]
+        Type: NO_SOURCE
         BuildSpec: |
           version: 0.2
           phases:
@@ -254,10 +264,8 @@ Resources:
                 - pip3 install boto3 taskcat cfn-lint
             build:
               commands:
-                - aws s3 cp $TEMPLATE_LOCATION .
-                - python3 preprocess.py
+                - aws s3 cp $TEST_TEMPLATE_LOCATION .taskcat.yml
                 - taskcat test run
-                - python3 postprocess.py
 
   StateMachineRole:
     Type: AWS::IAM::Role
