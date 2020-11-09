@@ -157,7 +157,7 @@ Resources:
               "Catch": [ {
                   "ErrorEquals": [ "States.ALL" ],
                   "Next": "Deployment failed",
-                  "ResultPath": "$.Error",
+                  "ResultPath": "$.Error"
               } ],
               "Next": "Deploy?"
             },

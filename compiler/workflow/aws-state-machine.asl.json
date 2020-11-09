@@ -16,12 +16,17 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::codebuild:startBuild.sync",
       "Parameters": {
-        "JobName": "{{ StackPrefix }}-deployer-tests",
+        "ProjectName": "{{ StackPrefix }}-deployer-tests",
         "EnvironmentVariablesOverride": [
           {
             "Name": "ARTIFACTS_BUCKET",
             "Type": "PLAINTEXT",
             "Value": "{{ ArtifactBucket }}"
+          },
+          {
+            "Name": "TEMPLATE_LOCATION",
+            "Type": "PLAINTEXT",
+            "Value.$": "$.TemplateLocation"
           },
           {
             "Name": "TEST_TEMPLATE_LOCATION",
@@ -32,7 +37,8 @@
       },
       "Catch": [ {
           "ErrorEquals": [ "States.ALL" ],
-          "Next": "Deployment failed"
+          "Next": "Deployment failed",
+          "ResultPath": "$.Error"
       } ],
       "Next": "Deploy?"
     },
