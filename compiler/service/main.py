@@ -89,7 +89,7 @@ def run_test(stack, template_location):
         return ""
     taskcat = read_yaml(stack["test"])
     taskcat["project"]["s3_bucket"] = os.environ["ARTIFACTS_BUCKET"]
-    taskcat["project"]["name"] = "$" + taskcat["project"]["name"]
+    taskcat["project"]["name"] = "tests"
     taskcat["tests"]["default"]["template"] = template_location.split("/")[-1]
     location = (
         "/".join(template_location.split("/")[3:-1])
