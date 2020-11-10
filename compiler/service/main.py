@@ -119,7 +119,7 @@ def trigger_deploy(
         input=json.dumps(
             {
                 "TemplateName": stack_name,
-                "DeploymentTimestamp": int(time.time()),
+                "DeploymentTimestamp": str(int(time.time())),
                 "TemplateLocation": template_location,
                 "Action": action.upper(),
                 "Test": test,

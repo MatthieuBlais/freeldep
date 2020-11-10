@@ -1,0 +1,11 @@
+- aws:
+    region: <YOUR_REGION>
+    account-id: <YOUR_ACCOUNTID>
+  location: ./template.yaml
+  action: 'delete_stack'
+  test: '.taskcat.yml'
+  template:
+    name: deploy-new-codecommit-repo
+    parameters:
+      project-name: 'this-is-an-updated-demo'
+  lambdas: []

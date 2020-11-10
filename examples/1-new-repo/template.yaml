@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Connect an existing repo to the state machine deployer
+
+Parameters:
+
+  DeployerServiceTriggerArn:
+    Type: String
+
+  DeployerServiceRoleName:
+    Type: String
+
+  FrameworkShortName:
+    Type: String
+
+  TeamArtifactBucket:
+    Type: String
+
+  MyRepositoryArn:
+    Type: String
+
+  TeamShortName:
+    Type: String
+
+Resources:
+
+  CloudWatchEventTriggerRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - CodeCommit Repository State Change
+        resources:
+          - !Ref MyRepositoryArn
+        detail:
+          event:
+          - referenceCreated
+          - referenceUpdated
+          referenceType:
+          - branch
+          referenceName:
+          - master
+          - staging
+      Targets:
+      - Arn: !Ref DeployerServiceTriggerArn
+        Id: service-pipeline
+
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeployerServiceTriggerArn
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt [CloudWatchEventTriggerRule, Arn]
+
+  DeployerServiceFrameworkPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${FrameworkShortName}-${TeamShortName}-cfn-deployer-service-policy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'codecommit:GitPull'
+            Resource:
+              - !Ref MyRepositoryArn
+          - Effect: Allow
+            Action:
+              - 's3:List*'
+            Resource:
+              - !Join ['', ['arn:aws:s3:::', !Ref TeamArtifactBucket ]]
+          - Effect: Allow
+            Action:
+              - s3:Put*
+              - s3:Get*
+              - s3:HeadObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${TeamArtifactBucket}/*'
+      Roles:
+        - !Ref DeployerServiceRoleName

@@ -100,8 +100,31 @@ Resources:
               "Resource": "arn:aws:states:::dynamodb:putItem",
               "Parameters": {
                 "TableName": "{{ DeploymentRegistryTableName }}",
-                "Item.$": "$"
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  }
+                }
               },
+              "ResultPath": null,
               "Next": "Run tests?"
             },
             "Run tests?": {
@@ -143,6 +166,7 @@ Resources:
                   "Next": "Deployment failed",
                   "ResultPath": "$.Error"
               } ],
+              "ResultPath": null,
               "Next": "Deploy?"
             },
             "Deploy?": {
@@ -212,8 +236,34 @@ Resources:
               "Resource": "arn:aws:states:::dynamodb:putItem",
               "Parameters": {
                 "TableName": "{{ DeploymentRegistryTableName }}",
-                "Item.$": "$"
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  },
+                  "DeploymentStatus": {
+                    "S": "SUCCESS"
+                  }
+                }
               },
+              "ResultPath": null,
               "Next": "Success"
             },
             "Success": {
@@ -229,8 +279,34 @@ Resources:
               "Resource": "arn:aws:states:::dynamodb:putItem",
               "Parameters": {
                 "TableName": "{{ DeploymentRegistryTableName }}",
-                "Item.$": "$"
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  },
+                  "DeploymentStatus": {
+                    "S": "FAILED"
+                  }
+                }
               },
+              "ResultPath": null,
               "Next": "Fail"
             },
             "Fail": {

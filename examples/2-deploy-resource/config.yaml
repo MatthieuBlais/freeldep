@@ -1,0 +1,10 @@
+- aws:
+    region: <YOUR_REGION>
+    account-id: <YOUR_ACCOUNTID>
+  location: ./template.yaml
+  action: 'create_or_update_stack'
+  template:
+    name: deploy-new-codecommit-repo
+    parameters:
+      project-name: 'this-is-demo'
+  lambdas: []

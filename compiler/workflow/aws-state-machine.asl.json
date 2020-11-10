@@ -6,8 +6,25 @@
       "Resource": "arn:aws:states:::dynamodb:putItem",
       "Parameters": {
         "TableName": "{{ DeploymentRegistryTableName }}",
-        "Item.$": "$"
+        "Item": {
+          "TemplateName": {
+            "S.$": "$.TemplateName"
+          },
+          "DeploymentTimestamp": {
+            "N.$": "$.DeploymentTimestamp"
+          },
+          "Action": {
+            "S.$": "$.Action"
+          },
+          "Valid": {
+            "BOOL.$": "$.Valid"
+          },
+          "KeepFailed": {
+            "BOOL.$": "$.KeepFailed"
+          }
+        }
       },
+      "ResultPath": null,
       "Next": "Run tests?"
     },
     "Run tests?": {
@@ -49,6 +66,7 @@
           "Next": "Deployment failed",
           "ResultPath": "$.Error"
       } ],
+      "ResultPath": null,
       "Next": "Deploy?"
     },
     "Deploy?": {
@@ -118,8 +136,28 @@
       "Resource": "arn:aws:states:::dynamodb:putItem",
       "Parameters": {
         "TableName": "{{ DeploymentRegistryTableName }}",
-        "Item.$": "$"
+        "Item": {
+          "TemplateName": {
+            "S.$": "$.TemplateName"
+          },
+          "DeploymentTimestamp": {
+            "N.$": "$.DeploymentTimestamp"
+          },
+          "Action": {
+            "S.$": "$.Action"
+          },
+          "Valid": {
+            "BOOL.$": "$.Valid"
+          },
+          "KeepFailed": {
+            "BOOL.$": "$.KeepFailed"
+          },
+          "DeploymentStatus": {
+            "S": "SUCCESS"
+          }
+        }
       },
+      "ResultPath": null,
       "Next": "Success"
     },
     "Success": {
@@ -135,8 +173,28 @@
       "Resource": "arn:aws:states:::dynamodb:putItem",
       "Parameters": {
         "TableName": "{{ DeploymentRegistryTableName }}",
-        "Item.$": "$"
+        "Item": {
+          "TemplateName": {
+            "S.$": "$.TemplateName"
+          },
+          "DeploymentTimestamp": {
+            "N.$": "$.DeploymentTimestamp"
+          },
+          "Action": {
+            "S.$": "$.Action"
+          },
+          "Valid": {
+            "BOOL.$": "$.Valid"
+          },
+          "KeepFailed": {
+            "BOOL.$": "$.KeepFailed"
+          },
+          "DeploymentStatus": {
+            "S": "FAILED"
+          }
+        }
       },
+      "ResultPath": null,
       "Next": "Fail"
     },
     "Fail": {
