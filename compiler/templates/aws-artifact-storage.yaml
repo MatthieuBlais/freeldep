@@ -3,7 +3,7 @@ Description: Deployer storage layer
 
 Parameters:
 
-  ArtificatBucketName:
+  ArtifactBucketName:
     Type: String
 
   DeploymentRegistryTableName:
@@ -14,7 +14,7 @@ Resources:
   ArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Ref ArtificatBucketName
+      BucketName: !Ref ArtifactBucketName
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -45,10 +45,10 @@ Resources:
         SSEEnabled: true
       TableName: !Ref DeploymentRegistryTableName
 
-Output:
+Outputs:
 
-  ArtificatBucketName:
-    Value: !Ref ArtificatBucketName
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucketName
 
   DeploymentRegistryTable:
     Value: !Ref DeploymentRegistryTable

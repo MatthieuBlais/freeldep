@@ -159,7 +159,7 @@ Resources:
                   - !GetAtt [DeployerCodeBuild, Arn]
 
 
-Output:
+Outputs:
 
   BuildTriggerLambda:
     Value: !Ref BuildTriggerLambda

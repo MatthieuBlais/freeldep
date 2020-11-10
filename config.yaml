@@ -5,7 +5,7 @@
   template:
     name: smlf-dataengineering-cfn-artifact-bucket
     parameters:
-      artifact-bucket: 'smlf-dataengineering-deployer-artifact-bucket'
+      artifact-bucket-name: 'smlf-dataengineering-deployer-artifact-bucket'
       deployment-registry-table-name: 'smlf-dataengineering-deployer-deployment-registry'
   lambdas: []
 

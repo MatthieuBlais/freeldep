@@ -5,6 +5,9 @@ Parameters:
   ArtifactBucket:
     Type: String
 
+  DeploymentRegistryTableName:
+    Type: String
+
   StackPrefix:
     Type: String
 
@@ -459,7 +462,7 @@ Resources:
                 Resource: '*'
 
 
-Output:
+Outputs:
 
   DeployTemplates:
     Value: !Ref DeployTemplates

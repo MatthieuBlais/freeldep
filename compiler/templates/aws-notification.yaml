@@ -25,7 +25,7 @@ Resources:
       {% endif %}
 
 
-Output:
+Outputs:
 
     DeploymentFailureNotification:
         Value: !Ref DeploymentFailureNotification

@@ -187,7 +187,7 @@ Resources:
                   - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${TemplateDeployerRepositoryName}'
 
 
-Output:
+Outputs:
 
   TemplateDeployerRepository:
     Value: !Ref TemplateDeployerRepository
