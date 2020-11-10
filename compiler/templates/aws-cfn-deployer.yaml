@@ -151,6 +151,11 @@ Resources:
                     "Name": "TEST_TEMPLATE_LOCATION",
                     "Type": "PLAINTEXT",
                     "Value.$": "$.Test"
+                  },
+                  {
+                    "Name": "AWS_REGION",
+                    "Type": "PLAINTEXT",
+                    "Value": "{{ AwsRegion }}"
                   }
                 ]
               },
@@ -260,6 +265,9 @@ Resources:
         - Name: TEST_TEMPLATE_LOCATION
           Type: PLAINTEXT
           Value: ''
+        - Name: AWS_REGION
+          Type: PLAINTEXT
+          Value: !Ref AWS::Region
       ServiceRole: !GetAtt [TestCodebuildRole, Arn]
       Source:
         Type: NO_SOURCE
@@ -351,6 +359,8 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: '/'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
       Policies:
         - PolicyName: !Sub "${StackPrefix}-deployer-test-cfn-policy"
           PolicyDocument:
@@ -366,12 +376,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - 's3:List*'
+                  - 's3:GetBucketLocation'
                 Resource:
                   - !Sub 'arn:aws:s3:::${ArtifactBucket}'
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
+                  - s3:DeleteObject
                   - s3:HeadObject
                 Resource:
                   - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
