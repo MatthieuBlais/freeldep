@@ -13,34 +13,6 @@ Parameters:
 
 Resources:
 
-  # ValidateTemplate:
-  #   Type: "AWS::Lambda::Function"
-  #   Properties:
-  #     Code:
-  #       S3Bucket: !Ref ArtifactBucket
-  #       S3Key: {{ LambdaCodeKey }}
-  #     Description: "Validate CFN template with cfnlint"
-  #     FunctionName: !Sub "${StackPrefix}-deployer-validate-template"
-  #     Handler: "validate.handler"
-  #     MemorySize: 128
-  #     Role: !GetAtt [LambdaDeployerRole, Arn]
-  #     Runtime: python3.8
-  #     Timeout: 15
-
-  GetTestResults:
-    Type: "AWS::Lambda::Function"
-    Properties:
-      Code:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: {{ LambdaCodeKey }}
-      Description: "Get output of test templates"
-      FunctionName: !Sub "${StackPrefix}-deployer-get-testresults"
-      Handler: "testresults.handler"
-      MemorySize: 128
-      Role: !GetAtt [LambdaDeployerRole, Arn]
-      Runtime: python3.8
-      Timeout: 15
-
   DeployTemplates:
     Type: "AWS::Lambda::Function"
     Properties:
@@ -118,8 +90,17 @@ Resources:
       StateMachineName: !Ref StateMachineName
       DefinitionString: |-
         {
-          "StartAt": "Run tests?",
+          "StartAt": "Initialize",
           "States": {
+            "Initialize": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ DeploymentRegistryTableName }}",
+                "Item.$": "$"
+              },
+              "Next": "Run tests?"
+            },
             "Run tests?": {
               "Type": "Choice",
               "Choices": [
@@ -151,11 +132,6 @@ Resources:
                     "Name": "TEST_TEMPLATE_LOCATION",
                     "Type": "PLAINTEXT",
                     "Value.$": "$.Test"
-                  },
-                  {
-                    "Name": "AWS_REGION",
-                    "Type": "PLAINTEXT",
-                    "Value": "{{ AwsRegion }}"
                   }
                 ]
               },
@@ -202,7 +178,7 @@ Resources:
                 {
                   "Variable": "$.Status",
                   "StringEquals": "SUCCESS",
-                  "Next": "Success"
+                  "Next": "Update Registry Success"
                 },
                 {
                   "Variable": "$.Status",
@@ -228,12 +204,30 @@ Resources:
               "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-keepfailed",
               "Next": "Deployment failed"
             },
+            "Update Registry Success": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ DeploymentRegistryTableName }}",
+                "Item.$": "$"
+              },
+              "Next": "Success"
+            },
             "Success": {
               "Type": "Succeed"
             },
             "Deployment failed": {
               "Type": "Task",
               "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-failed",
+              "Next": "Update Registry Failure"
+            },
+            "Update Registry Failure": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ DeploymentRegistryTableName }}",
+                "Item.$": "$"
+              },
               "Next": "Fail"
             },
             "Fail": {
@@ -242,6 +236,7 @@ Resources:
             }
           }
         }
+
       RoleArn: !GetAtt [StateMachineRole, Arn]
 
   DeployerCodeBuild:
@@ -316,6 +311,11 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StackPrefix}-deployer-*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DeploymentRegistryTableName}"
               - Effect: Allow
                 Action:
                   - logs:CreateLogDelivery
@@ -457,3 +457,24 @@ Resources:
                 Action:
                   - 'cloudformation:DescribeStacks'
                 Resource: '*'
+
+
+Output:
+
+  DeployTemplates:
+    Value: !Ref DeployTemplates
+
+  StatusTemplates:
+    Value: !Ref StatusTemplates
+
+  KeepFailedLambda:
+    Value: !Ref KeepFailedLambda
+
+  FailedDeployment:
+    Value: !Ref FailedDeployment
+
+  TemplateDeployer:
+    Value: !Ref TemplateDeployer
+
+  DeployerCodeBuild:
+    Value: !Ref DeployerCodeBuild

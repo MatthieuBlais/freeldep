@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import uuid
 import zipfile
 from datetime import datetime
@@ -13,7 +14,6 @@ from jinja2 import Template  # pylint: disable=import-error
 CONFIG_FILENAME = "./config.yaml"
 TEST_BRANCHES = ["preprod", "prod", "master"]
 COMPILED_TEMPLATE = "compiled-template.yaml"
-
 
 s3 = boto3.client("s3")
 sfn = boto3.client("stepfunctions")
@@ -119,6 +119,7 @@ def trigger_deploy(
         input=json.dumps(
             {
                 "TemplateName": stack_name,
+                "DeploymentTimestamp": int(time.time()),
                 "TemplateLocation": template_location,
                 "Action": action.upper(),
                 "Test": test,

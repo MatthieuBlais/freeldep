@@ -23,3 +23,9 @@ Resources:
           Protocol: email
         {% endfor %}
       {% endif %}
+
+
+Output:
+
+    DeploymentFailureNotification:
+        Value: !Ref DeploymentFailureNotification

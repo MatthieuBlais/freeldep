@@ -157,3 +157,12 @@ Resources:
                 Action: 'codebuild:StartBuild'
                 Resource:
                   - !GetAtt [DeployerCodeBuild, Arn]
+
+
+Output:
+
+  BuildTriggerLambda:
+    Value: !Ref BuildTriggerLambda
+
+  DeployerCodeBuild:
+    Value: !Ref DeployerCodeBuild

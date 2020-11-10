@@ -1,6 +1,15 @@
 {
-  "StartAt": "Run tests?",
+  "StartAt": "Initialize",
   "States": {
+    "Initialize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "{{ DeploymentRegistryTableName }}",
+        "Item.$": "$"
+      },
+      "Next": "Run tests?"
+    },
     "Run tests?": {
       "Type": "Choice",
       "Choices": [
@@ -78,7 +87,7 @@
         {
           "Variable": "$.Status",
           "StringEquals": "SUCCESS",
-          "Next": "Success"
+          "Next": "Update Registry Success"
         },
         {
           "Variable": "$.Status",
@@ -104,12 +113,30 @@
       "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-keepfailed",
       "Next": "Deployment failed"
     },
+    "Update Registry Success": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "{{ DeploymentRegistryTableName }}",
+        "Item.$": "$"
+      },
+      "Next": "Success"
+    },
     "Success": {
       "Type": "Succeed"
     },
     "Deployment failed": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-failed",
+      "Next": "Update Registry Failure"
+    },
+    "Update Registry Failure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "{{ DeploymentRegistryTableName }}",
+        "Item.$": "$"
+      },
       "Next": "Fail"
     },
     "Fail": {

@@ -185,3 +185,12 @@ Resources:
                   - 'codecommit:GitPull'
                 Resource:
                   - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${TemplateDeployerRepositoryName}'
+
+
+Output:
+
+  TemplateDeployerRepository:
+    Value: !Ref TemplateDeployerRepository
+
+  DeployerCodeBuild:
+    Value: !Ref DeployerCodeBuild
