@@ -1,0 +1,559 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A step function to deploy CFN templates
+Parameters:
+
+  ArtifactBucket:
+    Type: String
+
+  RegistryTable:
+    Type: String
+
+  StackPrefix:
+    Type: String
+
+  DeploymentWorkflow:
+    Type: String
+
+Resources:
+
+  DeployStackLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Deploy CFN template"
+      FunctionName: !Sub "${StackPrefix}-deployer-core-deploy-stack"
+      Handler: "deploy.handler"
+      MemorySize: 128
+      Role: !GetAtt [LambdaCFNRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      {% if AwsDeploymentRole is defined and AwsDeploymentRole != '' %}
+      Environment:
+        Variables:
+          ASSUME_ROLE_ARN: {{ AwsDeploymentRole }}
+      {% endif %}
+
+  GetStackStatusLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Get status of CFN template"
+      FunctionName: !Sub "${StackPrefix}-deployer-core-get-status"
+      Handler: "status.handler"
+      MemorySize: 128
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      {% if AwsDeploymentRole is defined  and AwsDeploymentRole != '' %}
+      Environment:
+        Variables:
+          ASSUME_ROLE_ARN: {{ AwsDeploymentRole }}
+      {% endif %}
+
+  CleanupLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Delete failed stack"
+      FunctionName: !Sub "${StackPrefix}-deployer-core-cleanup"
+      Handler: "cleanup.handler"
+      MemorySize: 128
+      Role: !GetAtt [LambdaCFNRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+      {% if AwsDeploymentRole is defined  and AwsDeploymentRole != '' %}
+      Environment:
+        Variables:
+          ASSUME_ROLE_ARN: {{ AwsDeploymentRole }}
+      {% endif %}
+
+  FailureLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: {{ LambdaCodeKey }}
+      Description: "Gracefully fails"
+      FunctionName: !Sub "${StackPrefix}-deployer-core-failed"
+      Handler: "failed.handler"
+      MemorySize: 128
+      Role: !GetAtt [LambdaDeployerRole, Arn]
+      Runtime: python3.8
+      Timeout: 15
+
+  TemplateDeployer:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Ref DeploymentWorkflow
+      DefinitionString: |-
+        {
+          "StartAt": "Initialize",
+          "States": {
+            "Initialize": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ RegistryTable }}",
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  }
+                }
+              },
+              "ResultPath": null,
+              "Next": "Run tests?"
+            },
+            "Run tests?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Test",
+                  "StringEquals": "",
+                  "Next": "Deploy?"
+                }
+              ],
+              "Default": "Test template"
+            },
+            "Test template": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::codebuild:startBuild.sync",
+              "Parameters": {
+                "ProjectName": "{{ StackPrefix }}-deployer-tests",
+                "EnvironmentVariablesOverride": [
+                  {
+                    "Name": "ARTIFACTS_BUCKET",
+                    "Type": "PLAINTEXT",
+                    "Value": "{{ ArtifactBucket }}"
+                  },
+                  {
+                    "Name": "TEMPLATE_LOCATION",
+                    "Type": "PLAINTEXT",
+                    "Value.$": "$.TemplateLocation"
+                  },
+                  {
+                    "Name": "TEST_TEMPLATE_LOCATION",
+                    "Type": "PLAINTEXT",
+                    "Value.$": "$.Test"
+                  }
+                ]
+              },
+              "Catch": [ {
+                  "ErrorEquals": [ "States.ALL" ],
+                  "Next": "Deployment failed",
+                  "ResultPath": "$.Error"
+              } ],
+              "ResultPath": null,
+              "Next": "Deploy?"
+            },
+            "Deploy?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Valid",
+                  "BooleanEquals": true,
+                  "Next": "Deploy template"
+                },
+                {
+                  "Variable": "$.Valid",
+                  "BooleanEquals": false,
+                  "Next": "Deployment failed"
+                }
+              ]
+            },
+            "Deploy template": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-core-deploy-stack",
+              "Next": "Wait 10s"
+            },
+            "Wait 10s": {
+              "Type": "Wait",
+              "Seconds": 10,
+              "Next": "Status"
+            },
+            "Status": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-core-get-status",
+              "Next": "Is deployed?"
+            },
+            "Is deployed?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.Status",
+                  "StringEquals": "SUCCESS",
+                  "Next": "Update Registry Success"
+                },
+                {
+                  "Variable": "$.Status",
+                  "StringEquals": "FAIL",
+                  "Next": "Keep failed?"
+                }
+              ],
+              "Default": "Wait 10s"
+            },
+            "Keep failed?": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.KeepFailed",
+                  "BooleanEquals": false,
+                  "Next": "Clean-up"
+                }
+              ],
+              "Default":"Deployment failed"
+            },
+            "Clean-up": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-core-cleanup",
+              "Next": "Deployment failed"
+            },
+            "Update Registry Success": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ RegistryTable }}",
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  },
+                  "DeploymentStatus": {
+                    "S": "SUCCESS"
+                  }
+                }
+              },
+              "ResultPath": null,
+              "Next": "Success"
+            },
+            "Success": {
+              "Type": "Succeed"
+            },
+            "Deployment failed": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:{{ AwsRegion }}:{{ AwsAccountId }}:function:{{ StackPrefix }}-deployer-core-failed",
+              "Next": "Update Registry Failure"
+            },
+            "Update Registry Failure": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "Parameters": {
+                "TableName": "{{ RegistryTable }}",
+                "Item": {
+                  "TemplateName": {
+                    "S.$": "$.TemplateName"
+                  },
+                  "DeploymentTimestamp": {
+                    "N.$": "$.DeploymentTimestamp"
+                  },
+                  "TemplateLocation": {
+                    "S.$": "$.TemplateLocation"
+                  },
+                  "Test": {
+                    "S.$": "$.Test"
+                  },
+                  "Action": {
+                    "S.$": "$.Action"
+                  },
+                  "Valid": {
+                    "BOOL.$": "$.Valid"
+                  },
+                  "KeepFailed": {
+                    "BOOL.$": "$.KeepFailed"
+                  },
+                  "DeploymentStatus": {
+                    "S": "FAILED"
+                  }
+                }
+              },
+              "ResultPath": null,
+              "Next": "Fail"
+            },
+            "Fail": {
+              "Type": "Fail",
+              "Cause": "$.Error.Cause"
+            }
+          }
+        }
+
+      RoleArn: !GetAtt [StateMachineRole, Arn]
+
+  DeployerCodeBuild:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub "${StackPrefix}-deployer-tests"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: To test cfn stacks with taskcat
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: "aws/codebuild/standard:4.0"
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+        - Name: ARTIFACTS_BUCKET
+          Type: PLAINTEXT
+          Value: !Ref ArtifactBucket
+        - Name: TEMPLATE_LOCATION
+          Type: PLAINTEXT
+          Value: ''
+        - Name: TEST_TEMPLATE_LOCATION
+          Type: PLAINTEXT
+          Value: ''
+        - Name: AWS_REGION
+          Type: PLAINTEXT
+          Value: !Ref AWS::Region
+      ServiceRole: !GetAtt [TestCodebuildRole, Arn]
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+              commands:
+                - pip3 install boto3 taskcat cfn-lint
+            build:
+              commands:
+                - aws s3 cp $TEMPLATE_LOCATION .
+                - aws s3 cp $TEST_TEMPLATE_LOCATION .taskcat.yml
+                - taskcat test run
+
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub "${StackPrefix}-deployer-state-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:StopBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:BatchGetReports
+                Resource:
+                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${StackPrefix}-deployer-tests'
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StackPrefix}-deployer-*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${RegistryTable}"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:Describe*
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:PutMetricFilter
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:PutMetricAlarm
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                Resource:
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule"
+                  - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventForCodeBuildStartBuildRule"
+
+  TestCodebuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Policies:
+        - PolicyName: !Sub "${StackPrefix}-deployer-test-cfn-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${StackPrefix}-deployer-tests:*'
+              - Effect: Allow
+                Action:
+                  - 's3:List*'
+                  - 's3:GetBucketLocation'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:HeadObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+
+  LambdaCFNRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  LambdaDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: StateMachinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Sub "arn:aws:sns:*:*:${StackPrefix}-deployer-*"
+              {% if AwsDeploymentRole is defined  and AwsDeploymentRole != '' %}
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - {{ AwsDeploymentRole }}
+              {% endif %}
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketAcl
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}"
+              - Effect: Allow
+                Action:
+                  - s3:HeadObject
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:DescribeStacks'
+                Resource: '*'
+
+
+Outputs:
+
+  DeployStackLambda:
+    Value: !Ref DeployStackLambda
+
+  GetStackStatusLambda:
+    Value: !Ref GetStackStatusLambda
+
+  CleanupLambda:
+    Value: !Ref CleanupLambda
+
+  FailureLambda:
+    Value: !Ref FailureLambda
+
+  TemplateDeployer:
+    Value: !Ref TemplateDeployer
+
+  DeployerCodeBuild:
+    Value: !Ref DeployerCodeBuild

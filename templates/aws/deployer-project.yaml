@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Resources to manage team's facts
+
+Parameters:
+
+  Project:
+    Type: String
+
+  Deployer:
+    Type: String
+
+  Branches:
+    Type: String
+
+  ServiceTrigger:
+    Type: String
+
+  DeployerServiceRole:
+    Type: String
+
+  Cleanup:
+    Type: String
+    Default: 'false'
+
+Conditions:
+
+  UseDeployerService: !Equals [ !Ref Cleanup, 'false' ]
+
+
+Resources:
+
+  Repository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref Project
+      RepositoryDescription: !Sub "CI/CD: ${Deployer} deployer"
+      Tags:
+        - Key: "deployer"
+          Value: !Ref Deployer
+
+  CloudWatchEventTriggerRule:
+    Type: 'AWS::Events::Rule'
+    Condition: UseDeployerService
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - CodeCommit Repository State Change
+        resources:
+          - !GetAtt [Repository, Arn]
+        detail:
+          event:
+          - referenceCreated
+          - referenceUpdated
+          referenceType:
+          - branch
+          referenceName: !Split [',', !Ref Branches]
+      Targets:
+      - Arn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ServiceTrigger}"
+        Id: service-pipeline
+
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Condition: UseDeployerService
+    Properties:
+      FunctionName: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ServiceTrigger}"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt [CloudWatchEventTriggerRule, Arn]
+
+  DeployerServiceFrameworkPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: UseDeployerService
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-deployer-service-policy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'codecommit:GitPull'
+            Resource:
+              - !GetAtt [Repository, Arn]
+      Roles:
+        - !Ref DeployerServiceRole
+
+
+Outputs:
+
+  Repository:
+    Value: !Ref Repository
+    Description: Projects

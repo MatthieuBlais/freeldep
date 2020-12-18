@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploying SNS Topic
+
+Parameters:
+
+  DeployerName:
+    Type: String
+
+  SubscriptionName:
+    Type: String
+
+Resources:
+
+  FailureSubscription:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub "${DeployerName}-deployer-${SubscriptionName}"
+      TopicName: !Sub "${DeployerName}-deployer-${SubscriptionName}"
+      {% if Subscriptions is defined %}
+      Subscription:
+        {% for subscription in Subscriptions %}
+        - Endpoint: {{ subscription }}
+          Protocol: email
+        {% endfor %}
+      {% endif %}
+
+
+Outputs:
+
+    FailureSubscription:
+      Value: !Ref FailureSubscription

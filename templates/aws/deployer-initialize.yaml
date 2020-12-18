@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deployer storage layer
+
+Parameters:
+
+  ArtifactBucket:
+    Type: String
+
+  RegistryTable:
+    Type: String
+
+Resources:
+
+  ArtifactStoreBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref ArtifactBucket
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - NoncurrentVersionExpirationInDays: 3
+            Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+
+  RegistryDbTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "TemplateName"
+          AttributeType: "S"
+        - AttributeName: "DeploymentTimestamp"
+          AttributeType: "N"
+      KeySchema:
+        - AttributeName: "TemplateName"
+          KeyType: "HASH"
+        - AttributeName: "DeploymentTimestamp"
+          KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      TableName: !Ref RegistryTable
+
+Outputs:
+
+  ArtifactBucket:
+    Value: !Ref ArtifactBucket
+
+  RegistryDbTable:
+    Value: !Ref RegistryDbTable

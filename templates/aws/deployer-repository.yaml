@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A step function to deploy CFN templates
+
+Parameters:
+
+  Repository:
+    Type: String
+
+  RepositoryCodebuild:
+    Type: String
+
+  ArtifactBucket:
+    Type: String
+
+  DeploymentWorkflow:
+    Type: String
+
+  Cleanup:
+    Type: String
+    Default: 'false'
+
+Conditions:
+
+  UseDeployerService: !Equals [ !Ref Cleanup, 'false' ]
+
+Resources:
+
+  DeployerRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref Repository
+      RepositoryDescription: "CI for cfn deployment"
+
+  CloudWatchEventTriggerRule:
+    Type: 'AWS::Events::Rule'
+    Condition: UseDeployerService
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - CodeCommit Repository State Change
+        resources:
+            - !GetAtt [DeployerRepository, Arn]
+        detail:
+          event:
+          - referenceCreated
+          - referenceUpdated
+          referenceType:
+          - branch
+          referenceName:
+          - master
+          - staging
+          - dev
+      Targets:
+      - Arn: !GetAtt [DeployerCodeBuild, Arn]
+        RoleArn: !GetAtt [CloudWatchEventTriggerRole, Arn]
+        Id: codebuild-pipeline
+
+  CloudWatchEventTriggerRole:
+    Type: 'AWS::IAM::Role'
+    Condition: UseDeployerService
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: cfn-deployer-cloudwatch-event-trigger-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'codebuild:StartBuild'
+                Resource:
+                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${RepositoryCodebuild}'
+
+  DeployerCodeBuild:
+    Type: "AWS::CodeBuild::Project"
+    Condition: UseDeployerService
+    Properties:
+      Name: !Ref RepositoryCodebuild
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: Deploy facts
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: "aws/codebuild/standard:4.0"
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+        - Name: ARTIFACTS_BUCKET
+          Type: PLAINTEXT
+          Value: !Ref ArtifactBucket
+        - Name: DEPLOYER_STATE_MACHINE_ARN
+          Type: PLAINTEXT
+          Value: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${DeploymentWorkflow}"
+      ServiceRole: !Ref CodebuildServiceRoleArn
+      Source:
+        Location: !Sub "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${Repository}"
+        Type: CODECOMMIT
+        GitCloneDepth: 1
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+              commands:
+                - pip3 install boto3 Jinja2 cfn-lint
+            build:
+              commands:
+                - /bin/bash bin/package.sh
+
+  CodebuildServiceRoleArn:
+    Type: AWS::IAM::Role
+    Condition: UseDeployerService
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: cfn-deployer-codebuild-ci-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryCodebuild}:*'
+              - Effect: Allow
+                Action:
+                  - 's3:List*'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:Put*
+                  - s3:Get*
+                  - s3:HeadObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+              - Effect: Allow
+                Action:
+                  - states:ListStateMachines
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:DescribeStateMachineForExecution
+                  - states:GetExecutionHistory
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - states:ListExecutions
+                  - states:DescribeStateMachine
+                  - states:StartExecution
+                  - states:StopExecution
+                Resource:
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${DeploymentWorkflow}"
+              #
+              # TODO: Least privilege for this job
+              #
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DeleteStack'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:CreateChangeSet'
+                  - 'cloudformation:DeleteChangeSet'
+                  - 'cloudformation:DescribeChangeSet'
+                  - 'cloudformation:ExecuteChangeSet'
+                  - 'cloudformation:SetStackPolicy'
+                  - 'cloudformation:ValidateTemplate'
+                  - 'iam:PassRole'
+                  - 'iam:GetRole'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'codecommit:GitPull'
+                Resource:
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${Repository}'
+
+
+Outputs:
+
+  DeployerRepository:
+    Value: !Ref DeployerRepository
+
+  DeployerCodeBuild:
+    Condition: UseDeployerService
+    Value: !Ref DeployerCodeBuild

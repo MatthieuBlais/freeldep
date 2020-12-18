@@ -1,9 +1,4 @@
+# Infrastructure as code deployer
 
 
-
-TO ADD:
-- cfnlint validation
-- tests / coverage
-- taskcat
-- keep-failed
-.precommit
+Create repositories with build-in CI/CD to create your Cloud resources in AWS.

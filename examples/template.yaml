@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Resources to manage team's facts
+
+Parameters:
+
+  ProjectName:
+    Type: String
+
+Resources:
+
+  ProjectRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref ProjectName
+
+Outputs:
+
+  ProjectRepository:
+      Value: !Ref ProjectRepository
