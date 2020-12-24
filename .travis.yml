@@ -1,5 +1,10 @@
 language: python
+install:
+  - pip install pytest-cov
+  - pip install coveralls
 script:
   - export FREELDEP_CONFIG=tests/data/config.ini
   - mkdir out
-  - pytest
+  - pytest --cov=freeldep/
+after_success:
+  - coveralls

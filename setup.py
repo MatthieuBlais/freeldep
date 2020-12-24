@@ -41,6 +41,7 @@ setup(
         "coverage==5.3",
         "moto==1.3.16",
         "google-cloud-storage==1.35.0",
+        "pytest-cov==2.10.1",
     ],
     namespace_packages=[],
     packages=find_packages(),
