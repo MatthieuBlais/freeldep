@@ -40,6 +40,7 @@ def test_show_config(deployer, config):
 def test_create_stack(deployer, config, aws_credentials):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
     os.environ["AWS_PROFILE"] = "pytest"
+    os.environ["AWS_REGION"] = "ap-southeast-1"
     os.environ["PYTEST"] = "true"
     runner = CliRunner()
     result = runner.invoke(
@@ -139,6 +140,7 @@ def test_create_stack(deployer, config, aws_credentials):
 def test_create_others(deployer, config, aws_credentials):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
     os.environ["AWS_PROFILE"] = "pytest"
+    os.environ["AWS_REGION"] = "ap-southeast-1"
     os.environ["PYTEST"] = "true"
     runner = CliRunner()
     result = runner.invoke(
