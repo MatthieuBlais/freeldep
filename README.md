@@ -85,8 +85,3 @@ Tests can be executed using pytest and coverage:
 ```
 coverage run -m pytest tests/ && coverage report -m
 ```
-
-
-## License
-
-This project is licensed under the he Python Packaging Authority - see the [LICENSE.md](LICENSE.md) file for details
