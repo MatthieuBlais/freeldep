@@ -1,4 +1,5 @@
 language: python
 script:
   - export FREELDEP_CONFIG=tests/data/config.ini
+  - mkdir out
   - pytest
