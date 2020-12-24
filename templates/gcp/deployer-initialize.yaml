@@ -1,0 +1,6 @@
+template:
+  resources:
+  - name:  {{ ArtifactBucket }}
+    properties:
+      location: {{ BucketLocation }}
+    type: storage.v1.bucket
