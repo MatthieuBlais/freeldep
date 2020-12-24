@@ -3,6 +3,7 @@ import json
 import click
 
 from freeldep.modules.utils import file_exists
+from freeldep.modules.utils import isdir
 from freeldep.modules.utils import list_files
 from freeldep.modules.utils import read_json
 
@@ -33,5 +34,6 @@ def config(ctx, name):
 def configs(ctx):
     """List all deployers already initialized"""
     home_folder = ctx.obj.config.get("cli", "home_folder", "~/.freeldep")
-    config_files = list_files(home_folder)
-    click.echo("\n".join([x.split(".")[0] for x in config_files]))
+    if isdir(home_folder):
+        config_files = list_files(home_folder)
+        click.echo("\n".join([x.split(".")[0] for x in config_files]))

@@ -39,6 +39,7 @@ def test_show_config(deployer, config):
 
 def test_create_stack(deployer, config):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
+    os.environ["AWS_PROFILE"] = "test"
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -130,6 +131,7 @@ def test_create_stack(deployer, config):
 
 def test_create_others(deployer, config):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
+    os.environ["AWS_PROFILE"] = "test"
     runner = CliRunner()
     result = runner.invoke(
         cli,

@@ -27,6 +27,10 @@ def file_exists(file_path):
     return os.path.exists(os.path.expanduser(file_path))
 
 
+def isdir(directory):
+    return os.path.isdir(os.path.expanduser(directory))
+
+
 def list_files(directory):
     directory = os.path.expanduser(directory)
     return [f for f in listdir(directory) if isfile(join(directory, f))]
