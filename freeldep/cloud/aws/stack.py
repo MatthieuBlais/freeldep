@@ -199,6 +199,12 @@ class CfnStack(CloudStack):
 
     def _boto_client(self, service, client=None):
         """Assume deployment role if any, else get client"""
+        if os.environ.get("PYTEST", ""):
+            if os.environ.get("AWS_PROFILE", ""):
+                del os.environ["AWS_PROFILE"]
+            return boto3.client(
+                service, aws_secret_access_key="NONE", aws_access_key_id="NONE"
+            )
         if client:
             return client
         if self.config["aws"].get("deployment-role", ""):

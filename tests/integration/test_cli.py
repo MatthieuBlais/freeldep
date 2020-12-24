@@ -37,9 +37,10 @@ def test_show_config(deployer, config):
     delete_deployer(config, "test")
 
 
-def test_create_stack(deployer, config):
+def test_create_stack(deployer, config, aws_credentials):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
-    os.environ["AWS_PROFILE"] = "test"
+    os.environ["AWS_PROFILE"] = "pytest"
+    os.environ["PYTEST"] = "true"
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -61,6 +62,7 @@ def test_create_stack(deployer, config):
         "cfn-lint out/testt-deployer-initialization-stack.yaml", shell=True
     )
     assert returncall == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         [
@@ -78,6 +80,7 @@ def test_create_stack(deployer, config):
     assert os.path.isfile("out/testt-deployer-core-stack.config.yaml")
     returncall = call("cfn-lint out/testt-deployer-core-stack.yaml", shell=True)
     assert returncall == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         [
@@ -95,6 +98,7 @@ def test_create_stack(deployer, config):
     assert os.path.isfile("out/testt-deployer-service-stack.yaml")
     returncall = call("cfn-lint out/testt-deployer-service-stack.yaml", shell=True)
     assert returncall == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         [
@@ -112,16 +116,19 @@ def test_create_stack(deployer, config):
         ],
     )
     assert result.exit_code == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         ["cleanup", "project", "mytest", "--deployer", "testt", "--dryrun"],
     )
     assert result.exit_code == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         ["cleanup", "core", "--deployer", "testt", "--dryrun"],
     )
     assert result.exit_code == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         ["cleanup", "service", "--deployer", "testt", "--dryrun"],
@@ -129,9 +136,10 @@ def test_create_stack(deployer, config):
     assert result.exit_code == 0
 
 
-def test_create_others(deployer, config):
+def test_create_others(deployer, config, aws_credentials):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
-    os.environ["AWS_PROFILE"] = "test"
+    os.environ["AWS_PROFILE"] = "pytest"
+    os.environ["PYTEST"] = "true"
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -155,6 +163,7 @@ def test_create_others(deployer, config):
     assert returncall == 0
     depl = load_deployer(config, "testt")
     assert "testt-deployer-test" in depl["subscriptions"]
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         [
@@ -172,6 +181,7 @@ def test_create_others(deployer, config):
     assert os.path.isfile("out/testt-deployer-repository-stack.yaml")
     returncall = call("cfn-lint out/testt-deployer-repository-stack.yaml", shell=True)
     assert returncall == 0
+    os.environ["AWS_PROFILE"] = "pytest"
     result = runner.invoke(
         cli,
         ["cleanup", "deployer", "testt", "--confirm"],
