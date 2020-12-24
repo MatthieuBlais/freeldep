@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-from cli.cloud.aws.validate import CfnStackValidation
+from freeldep.cloud.aws.validate import CfnStackValidation
 
 
 def test_file_exists():

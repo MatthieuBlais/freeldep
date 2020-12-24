@@ -1,13 +1,27 @@
 import os
 from subprocess import call
 
-from cli.templates import CoreDeployerTemplate
-from cli.templates import DeployerRepositoryTemplate
-from cli.templates import InitializeDeployerTemplate
+import pytest
+
+from freeldep.templates import CoreDeployerTemplate
+from freeldep.templates import DeployerRepositoryTemplate
+from freeldep.templates import InitializeDeployerTemplate
 
 
 def test_name(deployer):
     assert DeployerRepositoryTemplate.name(deployer) == "test-deployer-repository-stack"
+
+
+def test_nocloud(deployer, config):
+    testdeployer = deployer.copy()
+    testdeployer["cloud"] = "AWS"
+    assert DeployerRepositoryTemplate.get(testdeployer, config) is not None
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "GCP"
+        DeployerRepositoryTemplate.get(testdeployer, config)
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "sdfsdfsdfsdf"
+        DeployerRepositoryTemplate.get(testdeployer, config)
 
 
 def test_aws(deployer, config, configfile):

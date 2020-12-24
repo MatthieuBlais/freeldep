@@ -4,10 +4,10 @@ from subprocess import call
 
 from click.testing import CliRunner
 
-from cli.main import cli
-from cli.modules.utils import delete_deployer
-from cli.modules.utils import load_deployer
-from cli.modules.utils import save_deployer
+from freeldep.main import cli
+from freeldep.modules.utils import delete_deployer
+from freeldep.modules.utils import load_deployer
+from freeldep.modules.utils import save_deployer
 
 
 CONFIG_SAMPLE = "./tests/data/config.ini"
@@ -41,7 +41,17 @@ def test_create_stack(deployer, config):
     os.environ["FREELDEP_CONFIG"] = CONFIG_SAMPLE
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["create", "deployer", "testt", "--dryrun", "--output-location", "out/"]
+        cli,
+        [
+            "create",
+            "deployer",
+            "testt",
+            "--cloud",
+            "AWS",
+            "--dryrun",
+            "--output-location",
+            "out/",
+        ],
     )
     assert result.exit_code == 0
     assert os.path.isfile("out/testt-deployer-initialization-stack.config.yaml")
@@ -84,6 +94,38 @@ def test_create_stack(deployer, config):
     assert os.path.isfile("out/testt-deployer-service-stack.yaml")
     returncall = call("cfn-lint out/testt-deployer-service-stack.yaml", shell=True)
     assert returncall == 0
+    result = runner.invoke(
+        cli,
+        [
+            "deploy",
+            "project",
+            "--deployer",
+            "testt",
+            "--project",
+            "mytest",
+            "--stack-file",
+            "examples/config.yaml",
+            "--dryrun",
+            "--output-location",
+            "out/",
+        ],
+    )
+    assert result.exit_code == 0
+    result = runner.invoke(
+        cli,
+        ["cleanup", "project", "mytest", "--deployer", "testt", "--dryrun"],
+    )
+    assert result.exit_code == 0
+    result = runner.invoke(
+        cli,
+        ["cleanup", "core", "--deployer", "testt", "--dryrun"],
+    )
+    assert result.exit_code == 0
+    result = runner.invoke(
+        cli,
+        ["cleanup", "service", "--deployer", "testt", "--dryrun"],
+    )
+    assert result.exit_code == 0
 
 
 def test_create_others(deployer, config):
@@ -130,21 +172,6 @@ def test_create_others(deployer, config):
     assert returncall == 0
     result = runner.invoke(
         cli,
-        [
-            "create",
-            "project",
-            "test",
-            "--deployer",
-            "testt",
-            "--dryrun",
-            "--output-location",
-            "out/",
-        ],
+        ["cleanup", "deployer", "testt", "--confirm"],
     )
     assert result.exit_code == 0
-    assert os.path.isfile("out/testt-deployer-project-test.config.yaml")
-    assert os.path.isfile("out/testt-deployer-project-test.yaml")
-    returncall = call("cfn-lint out/testt-deployer-project-test.yaml", shell=True)
-    assert returncall == 0
-    depl = load_deployer(config, "testt")
-    assert "test" in depl["projects"]

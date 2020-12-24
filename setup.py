@@ -3,7 +3,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 PROJECT = "freeldep"
-VERSION = "0.1"
+VERSION = "0.2.2"
 
 
 try:
@@ -16,6 +16,7 @@ setup(
     version=VERSION,
     description="Serverless Infrastructure as code deployment",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Matthieu Blais",
     author_email="matthieu.blais1@gmail.com",
     url="https://github.com/MatthieuBlais/freeldep",
@@ -35,17 +36,18 @@ setup(
         "Click==7.1.2",
         "jinja2==2.11.2",
         "pyaml==20.4.0",
-        "cfnlint==0.0.9",
+        "cfn-lint==0.44.1",
         "pytest==6.1.2",
         "coverage==5.3",
         "moto==1.3.16",
+        "google-cloud-storage==1.35.0",
     ],
     namespace_packages=[],
     packages=find_packages(),
     include_package_data=True,
     entry_points="""
         [console_scripts]
-        freeldep=cli.main:cli
+        freeldep=freeldep.main:cli
     """,
     zip_safe=False,
 )

@@ -1,6 +1,8 @@
 import os
 
-from cli.templates import SubscriptionDeployerTemplate
+import pytest
+
+from freeldep.templates import SubscriptionDeployerTemplate
 
 
 def test_name(deployer):
@@ -8,6 +10,22 @@ def test_name(deployer):
         SubscriptionDeployerTemplate.name(deployer, "testsub")
         == "test-deployer-testsub-subscription"
     )
+
+
+def test_nocloud(deployer, config):
+    subscriptions = ["sdfsdf"]
+    testdeployer = deployer.copy()
+    testdeployer["cloud"] = "AWS"
+    assert (
+        SubscriptionDeployerTemplate.get("testsub", subscriptions, testdeployer, config)
+        is not None
+    )
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "GCP"
+        SubscriptionDeployerTemplate.get("testsub", subscriptions, testdeployer, config)
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "sdfsdfsdfsdf"
+        SubscriptionDeployerTemplate.get("testsub", subscriptions, testdeployer, config)
 
 
 def test_aws(deployer, config, configfile):

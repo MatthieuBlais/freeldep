@@ -4,19 +4,19 @@ import os
 import pytest
 import yaml
 
-from cli.modules.utils import delete_deployer
-from cli.modules.utils import execute_script
-from cli.modules.utils import file_exists
-from cli.modules.utils import get_workflow_id
-from cli.modules.utils import list_files
-from cli.modules.utils import load_deployer
-from cli.modules.utils import mkdir
-from cli.modules.utils import read_json
-from cli.modules.utils import read_yaml
-from cli.modules.utils import save_deployer
-from cli.modules.utils import save_json
-from cli.modules.utils import shorten_expr
-from cli.modules.utils import valid_expr
+from freeldep.modules.utils import delete_deployer
+from freeldep.modules.utils import execute_script
+from freeldep.modules.utils import file_exists
+from freeldep.modules.utils import get_workflow_id
+from freeldep.modules.utils import list_files
+from freeldep.modules.utils import load_deployer
+from freeldep.modules.utils import mkdir
+from freeldep.modules.utils import read_json
+from freeldep.modules.utils import read_yaml
+from freeldep.modules.utils import save_deployer
+from freeldep.modules.utils import save_json
+from freeldep.modules.utils import shorten_expr
+from freeldep.modules.utils import valid_expr
 
 TEMP_FOLDER = "/tmp/"
 
@@ -88,7 +88,7 @@ def test_manage_deployer(deployer, config, configfile):
     assert file_exists(test_deployer) is True
     saved_deployer = load_deployer(config, "test")
     for key in saved_deployer:
-        assert saved_deployer[key] is deployer[key]
+        assert saved_deployer[key] == deployer[key]
     delete_deployer(config, "test")
     assert file_exists(test_deployer) is False
 
@@ -117,9 +117,16 @@ def test_execute_script():
         f.write("ls -l")
     assert execute_script(filename)
     os.remove(filename)
+    filename = TEMP_FOLDER + "test.sh"
+    with open(filename, "w+") as f:
+        f.write("thisisgoingtofail")
+    assert execute_script(filename) is False
+    os.remove(filename)
 
 
 def test_get_workflow_id(deployer, config):
     workflow_name = "test-workflow"
-    expected_aws_arn = f"arn:aws:states: :stateMachine:{workflow_name}"
+    expected_aws_arn = (
+        f"arn:aws:states:region:123456789012:stateMachine:{workflow_name}"
+    )
     assert get_workflow_id("test-workflow", config) == expected_aws_arn

@@ -1,4 +1,4 @@
-from cli.cloud.aws.status import StackStatus
+from freeldep.cloud.aws.status import StackStatus
 
 
 def test_success():

@@ -1,11 +1,25 @@
 import os
 from subprocess import call
 
-from cli.templates import ProjectTemplate
+import pytest
+
+from freeldep.templates import ProjectTemplate
 
 
 def test_name(deployer):
     assert ProjectTemplate.name(deployer, "project") == "test-deployer-project-project"
+
+
+def test_nocloud(deployer, config):
+    testdeployer = deployer.copy()
+    testdeployer["cloud"] = "AWS"
+    assert ProjectTemplate.get("project", "master", testdeployer, config) is not None
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "GCP"
+        ProjectTemplate.get("project", "master", testdeployer, config)
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "sdfsdfsdfsdf"
+        ProjectTemplate.get("project", "master", testdeployer, config)
 
 
 def test_aws(deployer, config, configfile):

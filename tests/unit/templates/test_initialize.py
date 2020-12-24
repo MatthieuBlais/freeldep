@@ -1,7 +1,9 @@
 import os
 from subprocess import call
 
-from cli.templates import InitializeDeployerTemplate
+import pytest
+
+from freeldep.templates import InitializeDeployerTemplate
 
 
 def test_name(deployer):
@@ -9,6 +11,14 @@ def test_name(deployer):
         InitializeDeployerTemplate.name(deployer)
         == "test-deployer-initialization-stack"
     )
+
+
+def test_nocloud(deployer, config):
+    testdeployer = deployer.copy()
+    assert InitializeDeployerTemplate.get("AWS", testdeployer, config) is not None
+    assert InitializeDeployerTemplate.get("GCP", testdeployer, config) is not None
+    with pytest.raises(NotImplementedError):
+        InitializeDeployerTemplate.get("sdsd", testdeployer, config)
 
 
 def test_aws(deployer, config, configfile):

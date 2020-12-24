@@ -1,11 +1,25 @@
 import os
 
-from cli.templates import CoreDeployerTemplate
-from cli.templates import InitializeDeployerTemplate
+import pytest
+
+from freeldep.templates import CoreDeployerTemplate
+from freeldep.templates import InitializeDeployerTemplate
 
 
 def test_name(deployer):
     assert CoreDeployerTemplate.name(deployer) == "test-deployer-core-stack"
+
+
+def test_nocloud(deployer, config):
+    testdeployer = deployer.copy()
+    testdeployer["cloud"] = "AWS"
+    assert CoreDeployerTemplate.get(testdeployer, config) is not None
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "GCP"
+        CoreDeployerTemplate.get(testdeployer, config)
+    with pytest.raises(NotImplementedError):
+        testdeployer["cloud"] = "sdfsdfsdfsdf"
+        CoreDeployerTemplate.get(testdeployer, config)
 
 
 def test_aws(deployer, config, configfile):
@@ -36,5 +50,5 @@ def test_aws(deployer, config, configfile):
         template[0]["template"]["lambda-code-key"]
         == f"packages/{deployer['name']}-deployer-core-stack/"
     )
-    assert len(template[0]["lambdas"]) == 1
-    assert os.path.isdir(template[0]["lambdas"][0]["location"])
+    assert len(template[0]["functions"]) == 1
+    assert os.path.isdir(template[0]["functions"][0]["location"])

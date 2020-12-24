@@ -1,6 +1,6 @@
 import os
 
-from cli.cloud.aws.build import CodebuildHelper
+from freeldep.cloud.aws.build import CodebuildHelper
 
 
 def test_is_codebuild():

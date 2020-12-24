@@ -4,8 +4,8 @@ import os
 import pytest
 from click.testing import CliRunner
 
-from cli.main import Cli
-from cli.main import cli
+from freeldep.main import Cli
+from freeldep.main import cli
 
 
 def test_cli():

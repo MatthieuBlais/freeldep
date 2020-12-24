@@ -1,9 +1,9 @@
 import pytest
 
-from cli.modules.create import validate_bucket
-from cli.modules.create import validate_emails
-from cli.modules.create import validate_name
-from cli.modules.create import validate_registry
+from freeldep.modules.create import validate_bucket
+from freeldep.modules.create import validate_emails
+from freeldep.modules.create import validate_name
+from freeldep.modules.create import validate_registry
 
 
 def test_validate_name():

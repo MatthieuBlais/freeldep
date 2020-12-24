@@ -3,7 +3,7 @@ import os
 import click
 import pytest
 
-from cli.config import ConfigParser
+from freeldep.config import ConfigParser
 
 
 def test_config_error():

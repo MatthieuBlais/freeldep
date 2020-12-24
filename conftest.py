@@ -3,16 +3,16 @@ import os
 
 import boto3
 import pytest
+from cli.config import ConfigParser
 from moto import mock_cloudformation  # pylint: disable=import-error
 from moto import mock_s3  # pylint: disable=import-error
-
-from cli.config import ConfigParser
 
 
 @pytest.fixture
 def deployer():
     return {
         "name": "test",
+        "cloud": "AWS",
         "artifact": "test-deployer-artifact-bucket-809322",
         "registry": "test-deployer-deployment-registry",
         "deployment-workflow": "test-deployer-core",
@@ -43,7 +43,7 @@ def template():
         "aws": {"region": "ap-southeast-1", "account-id": "123456789011"},
         "location": "./templates/aws/deployer-core.yaml",
         "template": {"name": "test", "parameters": {}, "lambda-code-key": "test"},
-        "lambdas": [
+        "functions": [
             {
                 "name": "package",
                 "location": "./core/",
