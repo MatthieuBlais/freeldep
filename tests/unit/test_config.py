@@ -21,7 +21,7 @@ def test_config_filename():
 
 def test_config_env():
     os.environ["FREELDEP_CONFIG"] = ""
-    os.environ["FREELDEP_HOME"] = "./cli/"
+    os.environ["FREELDEP_HOME"] = "./freeldep/"
     ConfigParser("")
 
 

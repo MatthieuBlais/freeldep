@@ -3,9 +3,10 @@ import os
 
 import boto3
 import pytest
-from cli.config import ConfigParser
 from moto import mock_cloudformation  # pylint: disable=import-error
 from moto import mock_s3  # pylint: disable=import-error
+
+from freeldep.config import ConfigParser
 
 
 @pytest.fixture

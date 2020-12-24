@@ -15,7 +15,7 @@ def test_cli():
 
 
 def test_cli_logging():
-    cli_obj = Cli(aws_profile=None, verbose=0)
+    cli_obj = Cli(aws_profile=None, verbose=0, config_file="tests/data/config.ini")
     assert cli_obj._get_logging_level(0) == logging.WARNING
     assert cli_obj._get_logging_level(1) == logging.INFO
     assert cli_obj._get_logging_level(2) == logging.DEBUG
@@ -25,6 +25,7 @@ def test_cli_logging():
 
 def test_cli_cloud():
     os.environ["AWS_PROFILE"] = ""
+    os.environ["FREELDEP_CONFIG"] = "tests/data/config.ini"
     cli_obj = Cli()
     with pytest.raises(RuntimeError):
         cli_obj.require_cloud_access()
