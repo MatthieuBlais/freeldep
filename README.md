@@ -1,5 +1,8 @@
 # Freeldep: Infra-as-code deployment
 
+[![Build Status](https://travis-ci.com/MatthieuBlais/freeldep.svg?branch=main)](https://travis-ci.com/MatthieuBlais/freeldep)
+
+
 Infrastructure-as-code increase speed of setting up and maintaining IT environment. If you are using AWS and Cloudformation, Freeldep helps to version control your templates and test your infrastructure. It integrates with CodeCommit, CodeBuild and Step Function to deploy your infrastructure and use taskcat to test your templates. Freeldep also helps you quickly setting up this CI/CD pipeline.
 
 ## Architecture
