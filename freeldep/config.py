@@ -16,7 +16,7 @@ class ConfigParser:
         if os.path.isfile(config_name):
             self.config = configparser.ConfigParser()
             self.config.read(config_name)
-        else:
+        elif not os.environ.get("CODEBUILD_SOURCE_REPO_URL", None):
             raise click.UsageError(
                 "You must specify your deployment settings. Set FREELDEP_CONFIG, or FREELDEP_HOME"
                 "or create a file ./config.ini"

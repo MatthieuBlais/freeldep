@@ -66,12 +66,10 @@ Resources:
               runtime-versions:
                 python: 3.8
               commands:
-                - pip3 install boto3 Jinja2 cfn-lint
+                - pip3 install freeldep
             build:
               commands:
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/main.py .
-                - aws s3 cp s3://$ARTIFACTS_BUCKET/master/deployer/compiler/service/service.sh service.sh
-                - /bin/bash service.sh
+                - freeldep deploy project --stack-file config.yaml
 
   CodebuildServiceRole:
     Type: AWS::IAM::Role

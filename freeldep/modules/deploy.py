@@ -50,7 +50,7 @@ def core(ctx, deployer, wait, dryrun, output_location):
         output_folder=output_location,
     )
     deployer["deployment-workflow"] = f"{deployer['name']}-deployer-core"
-    deployer["account"] = config.get("aws", "account-id", None)
+    deployer["account"] = config.get("aws", "account", None)
     save_deployer(deployer, config)
 
 

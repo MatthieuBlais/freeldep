@@ -3,7 +3,7 @@ import json
 from utils import Clients
 from utils import Deployer
 
-clients = Clients()
+clients = Clients.get()
 
 CREATE_ACTIONS = ["UPDATE_STACK", "CREATE_OR_UPDATE_STACK", "CREATE_STACK"]
 DELETE_ACTIONS = ["DELETE_STACK"]
@@ -39,7 +39,7 @@ def handler(event, context):
 
     print(json.dumps(event, indent=4))
 
-    deployer = Deployer(clients)
+    deployer = Deployer.get(clients)
 
     if event["Action"] in CREATE_ACTIONS:
         create_handler(deployer, event)
