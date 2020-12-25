@@ -55,7 +55,7 @@ def test_list_files():
     for f in files:
         print(f)
         assert os.path.isfile(FOLDER + f)
-    assert len(files) == 1
+    assert len(files) == 3
 
 
 def test_save_json():

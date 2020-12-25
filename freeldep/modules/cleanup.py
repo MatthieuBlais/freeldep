@@ -126,7 +126,6 @@ def project(ctx, name, deployer, wait, dryrun):
 
 
 @cleanup.command()
-@click.argument("name")
 @click.option("--deployer", required=True, help="Name of your deployer")
 @click.option("--wait/--no-wait", default=True, help="Wait for cleanup completion")
 @click.option(
@@ -135,15 +134,13 @@ def project(ctx, name, deployer, wait, dryrun):
     help="If enable, does not really create a resource",
 )
 @click.pass_context
-def repository(ctx, name, deployer, wait, dryrun):
+def repository(ctx, deployer, wait, dryrun):
     """Remove the CICD integration of your deployer repository. Does not delete the repository"""
     ctx.obj.require_cloud_access()
     config = ctx.obj.config
     deployer = load_deployer(config, deployer)
     if deployer is None:
         raise click.BadParameter(f"Deployer {deployer} does not exist")
-    if "projects" not in deployer or name not in deployer["projects"]:
-        raise click.BadParameter(f"Project {name} does not exists")
     template = DeployerRepositoryTemplate.get(deployer, config)
     template[0]["template"]["parameters"]["cleanup"] = "true"
     Compiler.cleanup(deployer, template, wait=wait, dryrun=dryrun)

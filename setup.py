@@ -18,7 +18,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Matthieu Blais",
-    author_email="matthieu.blais1@gmail.com",
+    author_email="matthieu@freeldom.com",
     url="https://github.com/MatthieuBlais/freeldep",
     download_url="https://github.com/MatthieuBlais/freeldep.git",
     classifiers=[

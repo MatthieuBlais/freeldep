@@ -23,6 +23,8 @@ def test_config_env():
     os.environ["FREELDEP_CONFIG"] = ""
     os.environ["FREELDEP_HOME"] = "./freeldep/"
     ConfigParser("")
+    os.environ["FREELDEP_HOME"] = "./freeldep"
+    ConfigParser("")
 
 
 def test_config_env_2():
